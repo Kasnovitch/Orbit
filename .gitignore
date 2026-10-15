@@ -1,0 +1,14 @@
+# build output
+build/
+build-*/
+
+# local config with real credentials - commit config.example.json instead
+/config/
+
+# qt creator / visual studio local files
+*.user
+.vs/
+CMakeSettings.json
+
+# logs
+*.log
