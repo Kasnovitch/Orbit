@@ -134,7 +134,7 @@ AuthUser AuthService::login(const QString& username, const QString& password,
     insert.addBindValue(sha256Hex(token.toUtf8()));
     insert.addBindValue(now.addSecs(idleMinutes * 60));
     insert.addBindValue(now.addSecs(maxLifeDays * 24 * 3600));
-    insert.addBindValue("asalancountdown-desktop");
+    insert.addBindValue("orbit-desktop");
 
     if (!insert.exec() || !insert.next()) {
         if (error)

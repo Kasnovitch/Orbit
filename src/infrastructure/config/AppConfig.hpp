@@ -6,7 +6,7 @@ struct DatabaseConfig
 {
     QString host = "127.0.0.1";
     int port = 5432;
-    QString name = "asalancountdown";
+    QString name = "orbit";
     QString user = "asalan";
     QString password;
 };

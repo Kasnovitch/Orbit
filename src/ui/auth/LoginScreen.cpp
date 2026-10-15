@@ -18,7 +18,7 @@ LoginScreen::LoginScreen(QWidget* parent)
     page->setSpacing(12);
     page->addStretch();
 
-    auto* title = new QLabel("Asalancountdown", this);
+    auto* title = new QLabel("Orbit", this);
     title->setObjectName("loginTitle");
     title->setAlignment(Qt::AlignCenter);
 

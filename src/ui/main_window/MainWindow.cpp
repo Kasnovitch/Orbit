@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget* parent)
     sidebarLayout->setContentsMargins(16, 24, 16, 16);
     sidebarLayout->setSpacing(8);
 
-    auto* brand = new QLabel("Asalancountdown", sidebar);
+    auto* brand = new QLabel("Orbit", sidebar);
     brand->setObjectName("sidebarBrand");
     brand->setWordWrap(true);
 
@@ -99,7 +99,7 @@ MainWindow::MainWindow(QWidget* parent)
 
 void MainWindow::setUser(const QString& username, const QString& role)
 {
-    setWindowTitle("Asalancountdown \u2014 " + username);
+    setWindowTitle("Orbit \u2014 " + username);
     m_userLabel->setText(username + " (" + role + ")");
     m_userLabel->setVisible(true);
     m_logoutButton->setVisible(true);
