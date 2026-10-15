@@ -1,7 +1,5 @@
 #include "src/data/database/Database.hpp"
 
-#include <QCoreApplication>
-#include <QFile>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -10,17 +8,74 @@
 #include "src/infrastructure/config/AppConfig.hpp"
 
 namespace {
-const char* schemaCandidates[] = {
-    "db/schema/Schema.sql",
-    "../db/schema/Schema.sql",
-    "../../db/schema/Schema.sql",
-    "../../../db/schema/Schema.sql",
+
+// the tables day 1 needs. each new day adds its own here; existing
+// tables are never dropped or recreated.
+struct Table {
+    const char* name;
+    const char* ddl;
 };
+
+const Table day1Tables[] = {
+    { "users", R"(
+create table users (
+    id bigserial primary key,
+    username text not null,
+    password_hash text not null,
+    role text not null default 'user',
+    email text default '',
+    display_name text default '',
+    is_active boolean not null default true,
+    last_login_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint users_username_unique unique (username)
+)
+)" },
+    { "projects", R"(
+create table projects (
+    id bigserial primary key,
+    name text not null,
+    description text default '',
+    created_by bigint references users (id) on delete set null,
+    status text not null default 'active',
+    visibility text not null default 'private',
+    created_date timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    archived_at timestamptz
+)
+)" },
+    { "tasks", R"(
+create table tasks (
+    id bigserial primary key,
+    project_id bigint not null references projects (id) on delete cascade,
+    title text not null,
+    contents text default '',
+    status text not null default 'todo',
+    priority text not null default 'normal',
+    due_time timestamptz,
+    created_by bigint references users (id) on delete set null,
+    assigned_to bigint references users (id) on delete set null,
+    created_date timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    completed_at timestamptz
+)
+)" },
+};
+
+const char* day1Indexes[] = {
+    "create index projects_created_by_idx on projects (created_by)",
+    "create index tasks_project_id_idx on tasks (project_id)",
+    "create index tasks_due_time_idx on tasks (due_time)",
+    "create index tasks_created_by_idx on tasks (created_by)",
+    "create index tasks_assigned_to_idx on tasks (assigned_to)",
+};
+
 }
 
 bool Database::open(const DatabaseConfig& cfg)
 {
-    // only ever one connection for the whole app — if it's already
+    // only ever one connection for the whole app - if it's already
     // registered we just reuse it instead of opening a second one
     QSqlDatabase db;
     if (QSqlDatabase::contains()) {
@@ -50,55 +105,55 @@ bool Database::open(const DatabaseConfig& cfg)
 
 bool Database::ensureTables()
 {
-    QSqlQuery check;
-    if (!check.exec("select to_regclass('public.users')") || !check.next()) {
-        m_status = "database: " + check.lastError().text();
-        return false;
-    }
+    int created = 0;
 
-    // table already exists, nothing to do
-    if (!check.value(0).isNull())
-        return true;
+    for (const Table& table : day1Tables) {
+        // bail early if the table is already there, otherwise we'd
+        // try to remake an existing database on every launch
+        QSqlQuery exists;
+        exists.prepare("select to_regclass(?)");
+        exists.addBindValue(QString("public.%1").arg(table.name));
 
-    QFile file;
-    const QString appDir = QCoreApplication::applicationDirPath();
-    for (const char* path : schemaCandidates) {
-        if (QFile::exists(path)) {
-            file.setFileName(path);
-            break;
+        if (!exists.exec() || !exists.next()) {
+            m_status = "database: " + exists.lastError().text();
+            return false;
         }
-        if (QFile::exists(appDir + "/" + path)) {
-            file.setFileName(appDir + "/" + path);
-            break;
-        }
-    }
-
-    if (file.fileName().isEmpty() || !file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        m_status = "database: schema file not found";
-        return false;
-    }
-
-    // drop comment lines then run each statement
-    QString cleaned;
-    const QStringList lines = QString::fromUtf8(file.readAll()).split('\n');
-    for (const QString& line : lines) {
-        if (line.trimmed().startsWith("--"))
-            continue;
-        cleaned += line + "\n";
-    }
-
-    const QStringList statements = cleaned.split(';', Qt::SkipEmptyParts);
-    for (const QString& statement : statements) {
-        if (statement.trimmed().isEmpty())
+        if (!exists.value(0).isNull())
             continue;
 
-        QSqlQuery query;
-        if (!query.exec(statement)) {
-            m_status = "database: " + query.lastError().text();
+        QSqlQuery create;
+        if (!create.exec(QString::fromLatin1(table.ddl))) {
+            m_status = "database: " + create.lastError().text();
+            return false;
+        }
+        ++created;
+    }
+
+    // same treatment for the indexes: statements look like
+    // "create index <name> on ..." so we can pull the name out and check it
+    for (const char* indexDdl : day1Indexes) {
+        const QString statement = QString::fromLatin1(indexDdl);
+        const QString indexName = statement.section(' ', 2, 2);
+
+        QSqlQuery exists;
+        exists.prepare("select to_regclass(?)");
+        exists.addBindValue("public." + indexName);
+
+        if (!exists.exec() || !exists.next()) {
+            m_status = "database: " + exists.lastError().text();
+            return false;
+        }
+        if (!exists.value(0).isNull())
+            continue;
+
+        QSqlQuery create;
+        if (!create.exec(statement)) {
+            m_status = "database: " + create.lastError().text();
             return false;
         }
     }
 
-    m_status += " (tables created)";
+    if (created > 0)
+        m_status += " (" + QString::number(created) + " tables created)";
     return true;
 }
