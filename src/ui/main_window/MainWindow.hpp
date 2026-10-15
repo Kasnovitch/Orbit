@@ -21,7 +21,7 @@ signals:
 
 private:
     void navigate(int index);
-    QWidget* buildTeamsPage();
+    QWidget* buildPlaceholderPage(const QString& heading, const QString& hint);
 
     QStackedWidget* m_pages = nullptr;
     QVector<QPushButton*> m_navButtons;

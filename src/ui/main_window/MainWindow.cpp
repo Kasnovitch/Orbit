@@ -12,16 +12,10 @@
 #include "src/ui/dashboard/project_selector/ProjectSelector.hpp"
 #include "src/ui/settings/SettingsScreen.hpp"
 
-namespace {
-constexpr int kDashboardPage = 0;
-constexpr int kTeamsPage = 1;
-constexpr int kSettingsPage = 2;
-}
-
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("Asalancountdown");
+    setWindowTitle("Orbit");
     resize(1280, 800);
 
     auto* central = new QWidget(this);
@@ -44,7 +38,8 @@ MainWindow::MainWindow(QWidget* parent)
     auto* navGroup = new QButtonGroup(this);
     navGroup->setExclusive(true);
 
-    const QStringList navLabels = { "Dashboard", "Teams", "Settings" };
+    const QStringList navLabels = { "Dashboard", "Tasks", "Countdowns",
+                                    "Projects", "Teams", "Settings" };
     for (int i = 0; i < navLabels.size(); ++i) {
         auto* button = new QPushButton(navLabels.at(i), sidebar);
         button->setObjectName("navButton");
@@ -80,7 +75,14 @@ MainWindow::MainWindow(QWidget* parent)
 
     m_pages = new QStackedWidget(content);
     m_pages->addWidget(new Dashboard(m_pages));
-    m_pages->addWidget(buildTeamsPage());
+    m_pages->addWidget(buildPlaceholderPage(
+        "Tasks", "Tasks arrive on day 4 \u2014 list, filters and real counts."));
+    m_pages->addWidget(buildPlaceholderPage(
+        "Countdowns", "Countdowns arrive on day 5 \u2014 live timers and progress bars."));
+    m_pages->addWidget(buildPlaceholderPage(
+        "Projects", "Projects arrive on day 3 \u2014 crud plus the project selector."));
+    m_pages->addWidget(buildPlaceholderPage(
+        "Teams", "Teams stay a placeholder until collaboration is needed."));
     m_pages->addWidget(new SettingsScreen(m_pages));
 
     contentLayout->addLayout(topBar);
@@ -90,7 +92,7 @@ MainWindow::MainWindow(QWidget* parent)
     root->addWidget(content, 1);
     setCentralWidget(central);
 
-    m_navButtons.at(kDashboardPage)->setChecked(true);
+    m_navButtons.first()->setChecked(true);
 
     connect(navGroup, &QButtonGroup::idClicked, this, &MainWindow::navigate);
 }
@@ -108,19 +110,19 @@ void MainWindow::navigate(int index)
     m_pages->setCurrentIndex(index);
 }
 
-QWidget* MainWindow::buildTeamsPage()
+QWidget* MainWindow::buildPlaceholderPage(const QString& heading, const QString& hint)
 {
     auto* page = new QWidget();
     auto* layout = new QVBoxLayout(page);
     layout->setContentsMargins(24, 24, 24, 24);
 
-    auto* heading = new QLabel("Teams", page);
-    heading->setObjectName("pageHeading");
+    auto* headingLabel = new QLabel(heading, page);
+    headingLabel->setObjectName("pageHeading");
 
-    auto* placeholder = new QLabel("Coming soon \u2014 teams stay a placeholder until collaboration is needed.", page);
+    auto* placeholder = new QLabel(hint, page);
     placeholder->setObjectName("emptyHint");
 
-    layout->addWidget(heading);
+    layout->addWidget(headingLabel);
     layout->addWidget(placeholder);
     layout->addStretch();
     return page;

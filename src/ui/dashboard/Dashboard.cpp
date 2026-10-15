@@ -19,10 +19,11 @@ Dashboard::Dashboard(QWidget* parent)
 
     auto* tiles = new QHBoxLayout();
     tiles->setSpacing(16);
-    tiles->addWidget(new StatTile("Projects", this));
-    tiles->addWidget(new StatTile("Tasks", this));
-    tiles->addWidget(new StatTile("Next countdown", this));
-    tiles->addWidget(new StatTile("Files", this));
+    tiles->addWidget(new StatTile("Active Tasks", this));
+    tiles->addWidget(new StatTile("Completed Tasks", this));
+    tiles->addWidget(new StatTile("Upcoming Deadlines", this));
+    tiles->addWidget(new StatTile("Active Countdowns", this));
+    tiles->addWidget(new StatTile("Completed Countdowns", this));
     tiles->addStretch();
 
     auto* splitter = new QSplitter(Qt::Horizontal, this);
