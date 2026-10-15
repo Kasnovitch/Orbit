@@ -131,11 +131,11 @@ void requestTable(const QString& table)
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName("AsalancountdownConsole");
+    QCoreApplication::setApplicationName("OrbitConsole");
     QCoreApplication::setOrganizationName("Kasnovitch");
 
     std::cout << banner << "\n";
-    std::cout << "asalancountdown batch console - postgres. type 'help' for commands.\n\n";
+    std::cout << "orbit batch console - postgres. type 'help' for commands.\n\n";
 
     // one connection for the whole run, same config file as the gui
     AppConfig config;
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
         std::cout << database.status().toStdString() << "\n";
     }
 
-    std::cout << "\nasalan> " << std::flush;
+    std::cout << "\norbit> " << std::flush;
 
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
             }
         }
 
-        std::cout << "\nasalan> " << std::flush;
+        std::cout << "\norbit> " << std::flush;
     }
 
     std::cout << "bye.\n";
