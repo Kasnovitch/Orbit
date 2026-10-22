@@ -154,3 +154,62 @@ days 7-9: settings page, caching, audit/admin.
   no status) - add or leave computed-from-due_time?
 - cascade vs restrict when a project is deleted - I went cascade
 - `to-dolist.md` keep or delete? still unanswered from day 1
+
+## day 6-8 plus gui polish (16 oct 2026)
+
+### gui polish
+
+- dialogs (task/countdown/link edit, message boxes, tooltips), inputs and
+  scrollbars styled in both themes; rows/buttons/hover states consistent
+  across all four dashboard panels
+- full light theme (`ThemeLight.qss`) alongside dark; "System" follows the
+  windows app theme setting
+- dashboard header per the reference screenshot: "Good morning/afternoon/
+  evening, <name>" plus a live clock
+
+### day 7 - settings (stored in postgres)
+
+- `settings` table (one row per user: notifications_enabled, theme,
+  timezone) - created on launch like the others
+- `SettingsService`: read/upsert, plus the signed-in user's row kept in
+  memory for timezone formatting (`formatInTimezone`)
+- settings page is real now: theme (System/Dark/Light, applies live),
+  timezone (UTC-12..UTC+14, used for the absolute "due ..." line on
+  countdown rows), notifications toggle, and change-password (checks the
+  current password, stores the new one hashed, tries to revoke the user's
+  sessions - the revoke needs the day 2 sessions table and silently skips
+  until then)
+- theme preference loads at startup before the window is built
+
+### day 8 - caching
+
+- `src/cache/Cache`: in-memory ttl cache (30s), prefix invalidation, all
+  on the ui thread. never stores passwords/auth/session data
+- wired into every read path: projects list, task lists + tile counts,
+  countdown lists + counts, links, files. every create/update/delete
+  invalidates its prefix immediately, so what you see after a click is
+  always fresh
+- countdown remaining time is recalculated from the real due_time every
+  second - the cache only ever holds the row data, never the countdown
+
+### decisions (days 6-8)
+
+- timezone list is whole-hour offsets only for now (half-hour zones like
+  UTC+5:30 aren't in the combo; the parser accepts them)
+- "System" theme reads the windows AppsUseLightTheme registry value
+- cache keys are project-scoped, not user-scoped - fine while the app is
+  single-user-ish (everyone is the bootstrap admin); will need per-user
+  keys once day 3 permissions/multi-user land
+- password change revocation of sessions is best-effort until day 2's
+  sessions table exists
+
+### next
+
+day 2 (real login, argon2id, sessions - remember-me storage question still
+open), day 3 (projects crud + permissions), day 9 (audit + admin).
+
+### open questions (days 7-8)
+
+- timezone: ok with whole hours only, or add half-hour zones now?
+- notifications toggle is stored but nothing fires it yet (no desktop
+  notification code) - wire real notifications later or drop the toggle?
