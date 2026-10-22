@@ -1,5 +1,7 @@
 #include "src/data/database/Database.hpp"
 
+#include <cstddef>
+
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -15,6 +17,60 @@ struct Table {
     const char* name;
     const char* ddl;
 };
+
+bool applyTables(const Table* tables, std::size_t count, int& created, QString& status)
+{
+    for (std::size_t i = 0; i < count; ++i) {
+        // bail early if the table is already there, otherwise we'd
+        // try to remake an existing database on every launch
+        QSqlQuery exists;
+        exists.prepare("select to_regclass(?)");
+        exists.addBindValue(QString("public.%1").arg(tables[i].name));
+
+        if (!exists.exec() || !exists.next()) {
+            status = "database: " + exists.lastError().text();
+            return false;
+        }
+        if (!exists.value(0).isNull())
+            continue;
+
+        QSqlQuery create;
+        if (!create.exec(QString::fromLatin1(tables[i].ddl))) {
+            status = "database: " + create.lastError().text();
+            return false;
+        }
+        ++created;
+    }
+    return true;
+}
+
+// same treatment for the indexes: statements look like
+// "create index <name> on ..." so we can pull the name out and check it
+bool applyIndexes(const char* const* indexes, std::size_t count, QString& status)
+{
+    for (std::size_t i = 0; i < count; ++i) {
+        const QString statement = QString::fromLatin1(indexes[i]);
+        const QString indexName = statement.section(' ', 2, 2);
+
+        QSqlQuery exists;
+        exists.prepare("select to_regclass(?)");
+        exists.addBindValue("public." + indexName);
+
+        if (!exists.exec() || !exists.next()) {
+            status = "database: " + exists.lastError().text();
+            return false;
+        }
+        if (!exists.value(0).isNull())
+            continue;
+
+        QSqlQuery create;
+        if (!create.exec(statement)) {
+            status = "database: " + create.lastError().text();
+            return false;
+        }
+    }
+    return true;
+}
 
 const Table day1Tables[] = {
     { "users", R"(
@@ -63,12 +119,34 @@ create table tasks (
 )" },
 };
 
+// day 5: countdowns. project_id stays nullable for global countdowns
+const Table day5Tables[] = {
+    { "countdowns", R"(
+create table countdowns (
+    id bigserial primary key,
+    project_id bigint references projects (id) on delete cascade,
+    title text not null,
+    description text default '',
+    due_time timestamptz not null,
+    created_by bigint references users (id) on delete set null,
+    created_date timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+)
+)" },
+};
+
 const char* day1Indexes[] = {
     "create index projects_created_by_idx on projects (created_by)",
     "create index tasks_project_id_idx on tasks (project_id)",
     "create index tasks_due_time_idx on tasks (due_time)",
     "create index tasks_created_by_idx on tasks (created_by)",
     "create index tasks_assigned_to_idx on tasks (assigned_to)",
+};
+
+const char* day5Indexes[] = {
+    "create index countdowns_project_id_idx on countdowns (project_id)",
+    "create index countdowns_due_time_idx on countdowns (due_time)",
+    "create index countdowns_created_by_idx on countdowns (created_by)",
 };
 
 }
@@ -107,51 +185,11 @@ bool Database::ensureTables()
 {
     int created = 0;
 
-    for (const Table& table : day1Tables) {
-        // bail early if the table is already there, otherwise we'd
-        // try to remake an existing database on every launch
-        QSqlQuery exists;
-        exists.prepare("select to_regclass(?)");
-        exists.addBindValue(QString("public.%1").arg(table.name));
-
-        if (!exists.exec() || !exists.next()) {
-            m_status = "database: " + exists.lastError().text();
-            return false;
-        }
-        if (!exists.value(0).isNull())
-            continue;
-
-        QSqlQuery create;
-        if (!create.exec(QString::fromLatin1(table.ddl))) {
-            m_status = "database: " + create.lastError().text();
-            return false;
-        }
-        ++created;
-    }
-
-    // same treatment for the indexes: statements look like
-    // "create index <name> on ..." so we can pull the name out and check it
-    for (const char* indexDdl : day1Indexes) {
-        const QString statement = QString::fromLatin1(indexDdl);
-        const QString indexName = statement.section(' ', 2, 2);
-
-        QSqlQuery exists;
-        exists.prepare("select to_regclass(?)");
-        exists.addBindValue("public." + indexName);
-
-        if (!exists.exec() || !exists.next()) {
-            m_status = "database: " + exists.lastError().text();
-            return false;
-        }
-        if (!exists.value(0).isNull())
-            continue;
-
-        QSqlQuery create;
-        if (!create.exec(statement)) {
-            m_status = "database: " + create.lastError().text();
-            return false;
-        }
-    }
+    if (!applyTables(day1Tables, std::size(day1Tables), created, m_status)
+        || !applyTables(day5Tables, std::size(day5Tables), created, m_status)
+        || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
+        || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status))
+        return false;
 
     if (created > 0)
         m_status += " (" + QString::number(created) + " tables created)";

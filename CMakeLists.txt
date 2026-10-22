@@ -27,6 +27,7 @@ qt_add_executable(Orbit WIN32
     src/data/auth/SessionWatch.cpp
     src/services/projects/ProjectService.cpp
     src/services/tasks/TaskService.cpp
+    src/services/countdowns/CountdownService.cpp
     src/ui/resources/Resources.qrc
 )
 

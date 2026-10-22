@@ -4,6 +4,7 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 
+#include "src/services/countdowns/CountdownService.hpp"
 #include "src/services/tasks/TaskService.hpp"
 #include "src/ui/dashboard/countdown_panel/CountdownPanel.hpp"
 #include "src/ui/dashboard/files_panel/FilesPanel.hpp"
@@ -39,7 +40,7 @@ Dashboard::Dashboard(qint64 userId, QWidget* parent)
     auto* leftLayout = new QVBoxLayout(left);
     leftLayout->setContentsMargins(0, 0, 0, 0);
     leftLayout->setSpacing(16);
-    m_countdownPanel = new CountdownPanel(left);
+    m_countdownPanel = new CountdownPanel(m_userId, left);
     m_taskPanel = new TaskPanel(m_userId, left);
     leftLayout->addWidget(m_countdownPanel, 3);
     leftLayout->addWidget(m_taskPanel, 2);
@@ -60,6 +61,7 @@ Dashboard::Dashboard(qint64 userId, QWidget* parent)
     layout->addWidget(splitter, 1);
 
     connect(m_taskPanel, &TaskPanel::dataChanged, this, &Dashboard::refreshStats);
+    connect(m_countdownPanel, &CountdownPanel::dataChanged, this, &Dashboard::refreshStats);
 }
 
 void Dashboard::setProject(qint64 projectId)
@@ -68,6 +70,7 @@ void Dashboard::setProject(qint64 projectId)
         return;
     m_projectId = projectId;
     m_taskPanel->setProject(projectId);
+    m_countdownPanel->setProject(projectId);
     refreshStats();
 }
 
@@ -77,4 +80,8 @@ void Dashboard::refreshStats()
     m_activeTasks->setValue(QString::number(tasks.countActive(m_projectId)));
     m_completedTasks->setValue(QString::number(tasks.countCompleted(m_projectId)));
     m_upcomingDeadlines->setValue(QString::number(tasks.countDueSoon(m_projectId, 7)));
+
+    CountdownService countdowns;
+    m_activeCountdowns->setValue(QString::number(countdowns.countUpcoming(m_projectId)));
+    m_completedCountdowns->setValue(QString::number(countdowns.countPast(m_projectId)));
 }

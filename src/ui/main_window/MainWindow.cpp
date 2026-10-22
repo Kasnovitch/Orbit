@@ -80,7 +80,7 @@ MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
     m_pages->addWidget(buildPlaceholderPage(
         "Tasks", "The task list lives on the dashboard for now, tied to the selected project."));
     m_pages->addWidget(buildPlaceholderPage(
-        "Countdowns", "Countdowns arrive on day 5 \u2014 live timers and progress bars."));
+        "Countdowns", "Countdowns live on the dashboard panel - nearest deadline first, global ones included."));
     m_pages->addWidget(buildPlaceholderPage(
         "Projects", "Projects arrive on day 3 \u2014 crud plus the project selector."));
     m_pages->addWidget(buildPlaceholderPage(

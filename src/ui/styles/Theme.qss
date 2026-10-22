@@ -219,6 +219,12 @@ QLabel#rowDetail {
     font-size: 11px;
 }
 
+QLabel#rowRemaining {
+    color: #2dd4bf;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 QPushButton#rowButton {
     background-color: transparent;
     border: 1px solid #3a3f4d;
