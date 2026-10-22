@@ -53,6 +53,7 @@ private:
     QString hashPassword(const QString& password);
     bool verifyPassword(const QString& password, const QString& stored);
     void storeToken(const AuthUser& user);
+    QString loadRememberedToken();
     void forgetToken();
     QByteArray randomBytes(int count);
     QString sha256Hex(const QByteArray& data);

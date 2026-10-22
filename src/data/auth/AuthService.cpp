@@ -4,11 +4,15 @@
 
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QPasswordDigestor>
-#include <QRandomGenerator>
 #include <QSettings>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStandardPaths>
+#include <QSysInfo>
 #include <QVariant>
 
 namespace {
@@ -23,6 +27,43 @@ void ensureSodium()
 
 const int pbkdf2Iterations = 100000;
 const char* hashPrefix = "pbkdf2-sha256";
+
+// remember-me file: token sealed with a key derived from the machine
+// identity (windows user + machine guid). stops the file being useful if
+// it's copied to another machine; not a defence against a determined
+// local attacker (decision logged in PROGRESS.md)
+QByteArray localTokenKey()
+{
+    ensureSodium();
+
+    QString material = qEnvironmentVariable("USERNAME");
+#ifdef Q_OS_WIN
+    QSettings registry("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography",
+                       QSettings::NativeFormat);
+    material += '@' + registry.value("MachineGuid").toString();
+#else
+    material += '@' + QSysInfo::machineHostName();
+#endif
+
+    const QByteArray pass = material.toUtf8();
+    QByteArray key(crypto_secretbox_KEYBYTES, '\0');
+    static const char salt[crypto_pwhash_SALTBYTES] = "orbit-remember1";
+    if (crypto_pwhash(reinterpret_cast<unsigned char*>(key.data()), key.size(),
+                      pass.constData(), pass.size(),
+                      reinterpret_cast<const unsigned char*>(salt),
+                      crypto_pwhash_OPSLIMIT_INTERACTIVE,
+                      crypto_pwhash_MEMLIMIT_INTERACTIVE,
+                      crypto_pwhash_ALG_DEFAULT) != 0)
+        return QByteArray();
+
+    return key;
+}
+
+QString rememberFilePath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+        + "/remember.bin";
+}
 
 }
 
@@ -187,8 +228,7 @@ AuthUser AuthService::restoreSession()
 {
     AuthUser user;
 
-    QSettings settings;
-    const QString token = settings.value("session/token").toString();
+    const QString token = loadRememberedToken();
     if (token.isEmpty())
         return user;
 
@@ -300,12 +340,14 @@ bool AuthService::changePassword(qint64 userId, const QString& currentPassword,
         return false;
     }
 
-    // kill every session for this user - the sessions table arrives with
-    // day 2, so until then this silently fails and that's fine
+    // kill every session for this user - password change invalidates
+    // all of them per the spec
     QSqlQuery revoke;
-    revoke.exec(QString(
-        "update sessions set revoked_at = now() where user_id = %1 "
-        "and revoked_at is null").arg(userId));
+    revoke.prepare(
+        "update sessions set revoked_at = now() where user_id = ? "
+        "and revoked_at is null");
+    revoke.addBindValue(userId);
+    revoke.exec();
 
     return true;
 }
@@ -363,16 +405,69 @@ bool AuthService::verifyPassword(const QString& password, const QString& stored)
 
 void AuthService::storeToken(const AuthUser& user)
 {
-    QSettings settings;
-    settings.setValue("session/token", user.token);
-    settings.setValue("session/username", user.username);
+    ensureSodium();
+
+    const QByteArray key = localTokenKey();
+    if (key.isEmpty())
+        return;
+
+    // secretbox: nonce + sealed token, magic header so we can spot a
+    // mangled/corrupt file and just forget it
+    QByteArray nonce(crypto_secretbox_NONCEBYTES, '\0');
+    randombytes_buf(nonce.data(), nonce.size());
+
+    const QByteArray message = user.token.toUtf8();
+    QByteArray box(crypto_secretbox_MACBYTES + message.size(), '\0');
+    if (crypto_secretbox_easy(reinterpret_cast<unsigned char*>(box.data()),
+                              reinterpret_cast<const unsigned char*>(message.constData()),
+                              message.size(),
+                              reinterpret_cast<const unsigned char*>(nonce.constData()),
+                              reinterpret_cast<const unsigned char*>(key.constData())) != 0)
+        return;
+
+    QDir().mkpath(QFileInfo(rememberFilePath()).absolutePath());
+    QFile file(rememberFilePath());
+    if (!file.open(QIODevice::WriteOnly))
+        return;
+    file.write("ORBT1");
+    file.write(nonce);
+    file.write(box);
+}
+
+QString AuthService::loadRememberedToken()
+{
+    ensureSodium();
+
+    QFile file(rememberFilePath());
+    if (!file.open(QIODevice::ReadOnly))
+        return QString();
+
+    const QByteArray raw = file.readAll();
+    const int headerSize = 5 + crypto_secretbox_NONCEBYTES;
+    if (!raw.startsWith("ORBT1") || raw.size() <= headerSize + crypto_secretbox_MACBYTES)
+        return QString();
+
+    const QByteArray key = localTokenKey();
+    if (key.isEmpty())
+        return QString();
+
+    const QByteArray nonce = raw.mid(5, crypto_secretbox_NONCEBYTES);
+    const QByteArray box = raw.mid(headerSize);
+    QByteArray message(box.size() - crypto_secretbox_MACBYTES, '\0');
+    if (crypto_secretbox_open_easy(
+            reinterpret_cast<unsigned char*>(message.data()),
+            reinterpret_cast<const unsigned char*>(box.constData()),
+            box.size(),
+            reinterpret_cast<const unsigned char*>(nonce.constData()),
+            reinterpret_cast<const unsigned char*>(key.constData())) != 0)
+        return QString();
+
+    return QString::fromUtf8(message);
 }
 
 void AuthService::forgetToken()
 {
-    QSettings settings;
-    settings.remove("session/token");
-    settings.remove("session/username");
+    QFile::remove(rememberFilePath());
 }
 
 QByteArray AuthService::randomBytes(int count)

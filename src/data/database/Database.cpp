@@ -119,6 +119,24 @@ create table tasks (
 )" },
 };
 
+// day 2: real sessions. token hash only, 30 min idle / 7 day absolute
+const Table day2Tables[] = {
+    { "sessions", R"(
+create table sessions (
+    id bigserial primary key,
+    user_id bigint not null references users (id) on delete cascade,
+    token_hash text not null,
+    created_at timestamptz not null default now(),
+    last_activity_at timestamptz not null default now(),
+    expires_at timestamptz not null,
+    absolute_expires_at timestamptz not null,
+    revoked_at timestamptz,
+    user_agent text default '',
+    constraint sessions_token_hash_unique unique (token_hash)
+)
+)" },
+};
+
 // day 5: countdowns. project_id stays nullable for global countdowns
 const Table day5Tables[] = {
     { "countdowns", R"(
@@ -185,6 +203,11 @@ const char* day1Indexes[] = {
     "create index tasks_assigned_to_idx on tasks (assigned_to)",
 };
 
+const char* day2Indexes[] = {
+    "create index sessions_user_id_idx on sessions (user_id)",
+    "create index sessions_expires_at_idx on sessions (expires_at)",
+};
+
 const char* day5Indexes[] = {
     "create index countdowns_project_id_idx on countdowns (project_id)",
     "create index countdowns_due_time_idx on countdowns (due_time)",
@@ -233,10 +256,12 @@ bool Database::ensureTables()
     int created = 0;
 
     if (!applyTables(day1Tables, std::size(day1Tables), created, m_status)
+        || !applyTables(day2Tables, std::size(day2Tables), created, m_status)
         || !applyTables(day5Tables, std::size(day5Tables), created, m_status)
         || !applyTables(day6Tables, std::size(day6Tables), created, m_status)
         || !applyTables(day7Tables, std::size(day7Tables), created, m_status)
         || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
+        || !applyIndexes(day2Indexes, std::size(day2Indexes), m_status)
         || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
         || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status))
         return false;

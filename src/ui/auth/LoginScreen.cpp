@@ -52,12 +52,7 @@ LoginScreen::LoginScreen(QWidget* parent)
     m_modeButton->setObjectName("linkButton");
     m_modeButton->setFlat(true);
 
-    // register and remember me don't exist until day 2, keep the
-    // day 1 login page plain
-    m_remember->setVisible(false);
-    m_modeButton->setVisible(false);
-
-    m_note = new QLabel("login is a placeholder for now \u2014 any details will let you in.", this);
+    m_note = new QLabel("", this);
     m_note->setObjectName("loginNote");
     m_note->setAlignment(Qt::AlignCenter);
     m_note->setWordWrap(true);

@@ -1,9 +1,9 @@
 #include "src/app/Application.hpp"
 
 #include <QApplication>
-#include <QSqlQuery>
 
 #include "src/data/auth/AuthService.hpp"
+#include "src/data/auth/SessionWatch.hpp"
 #include "src/data/database/Database.hpp"
 #include "src/infrastructure/config/AppConfig.hpp"
 #include "src/services/projects/ProjectService.hpp"
@@ -11,37 +11,6 @@
 #include "src/ui/auth/LoginScreen.hpp"
 #include "src/ui/main_window/MainWindow.hpp"
 #include "src/ui/styles/Theme.hpp"
-
-namespace {
-
-// temporary identity bootstrap until day 2 (real login) and day 3
-// (projects crud) land: seed the default admin, treat the first active
-// user as who "we" are, and make sure one project exists to work in
-AuthUser bootstrapIdentity()
-{
-    AuthUser user;
-
-    AuthService auth;
-    auth.seedDefaultUser();
-
-    QSqlQuery find;
-    if (!find.exec("select id, username, display_name, role from users "
-                   "where is_active = true order by id limit 1")
-        || !find.next())
-        return user;
-
-    user.id = find.value(0).toLongLong();
-    user.username = find.value(1).toString();
-    user.displayName = find.value(2).toString();
-    user.role = find.value(3).toString();
-
-    ProjectService projects;
-    projects.ensureGeneralProject(user.id);
-
-    return user;
-}
-
-}
 
 int Application::run(int argc, char** argv)
 {
@@ -65,24 +34,93 @@ int Application::run(int argc, char** argv)
         dbStatus = database.status();
     }
 
-    // no-op if the db is down - user.id stays 0 and the panels stay empty
-    const AuthUser user = bootstrapIdentity();
+    AuthService auth;
+    auth.seedDefaultUser();
 
-    // day 7: the saved theme/timezone etc, straight from the settings table
-    SettingsService::loadCurrent(user.id);
-    OrbitTheme::apply(SettingsService::currentSettings().theme);
+    SessionWatch watch(auth);
 
-    MainWindow mainWindow(user);
     LoginScreen login;
     login.setDatabaseStatus(dbStatus);
 
-    // day 1: any input gets you in, real login lands on day 2
-    QObject::connect(&login, &LoginScreen::loginAttempted, [&]() {
-        mainWindow.setUser(user.username, user.role);
-        mainWindow.show();
+    // one window per login; rebuilt on each login so the dashboard
+    // always picks up the signed-in user's id
+    MainWindow* mainWindow = nullptr;
+    AuthUser currentUser;
+
+    auto leaveApp = [&](const QString& note) {
+        watch.stop();
+        if (currentUser.sessionId > 0)
+            auth.logout(currentUser);
+        currentUser = AuthUser();
+        // deleteLater: the logout signal is emitted from mainWindow itself
+        if (mainWindow)
+            mainWindow->deleteLater();
+        mainWindow = nullptr;
+        OrbitTheme::apply("dark");
+        login.show();
+        login.clearPassword();
+        login.showNote(note);
+    };
+
+    auto enterApp = [&](const AuthUser& user) {
+        currentUser = user;
+
+        ProjectService projects;
+        projects.ensureGeneralProject(user.id);
+
+        // day 7: the saved theme/timezone etc, straight from the settings table
+        SettingsService::loadCurrent(user.id);
+        OrbitTheme::apply(SettingsService::currentSettings().theme);
+
+        mainWindow = new MainWindow(user);
+        mainWindow->setUser(user.username, user.role);
+        mainWindow->show();
         login.close();
+        watch.start(user.sessionId);
+
+        // logged out from the sidebar button
+        QObject::connect(mainWindow, &MainWindow::logoutRequested, &watch, [&]() {
+            leaveApp("logged out.");
+        });
+    };
+
+    QObject::connect(&watch, &SessionWatch::sessionExpired, &watch, [&]() {
+        leaveApp("session expired \u2014 log in again.");
     });
 
-    login.show();
+    QObject::connect(&login, &LoginScreen::loginAttempted,
+                     [&](const QString& username, const QString& password,
+                         bool remember) {
+        QString error;
+        const AuthUser user = auth.login(username, password, remember, &error);
+        if (user.id == 0) {
+            login.showNote(error);
+            login.clearPassword();
+            return;
+        }
+        enterApp(user);
+    });
+
+    QObject::connect(&login, &LoginScreen::registerAttempted,
+                     [&](const QString& username, const QString& password,
+                         const QString& confirmPassword, bool remember) {
+        Q_UNUSED(remember)
+        QString error;
+        if (!auth.registerUser(username, password, confirmPassword, &error)) {
+            login.showNote(error);
+            login.clearPassword();
+            return;
+        }
+        login.showNote("account created \u2014 log in with it.");
+        login.clearPassword();
+    });
+
+    // coming back from a previous run with "remember me" ticked
+    const AuthUser restored = auth.restoreSession();
+    if (restored.id > 0)
+        enterApp(restored);
+    else
+        login.show();
+
     return app.exec();
 }
