@@ -9,11 +9,22 @@
 #include <QUuid>
 #include <QVariant>
 
+#include "src/cache/Cache.hpp"
+
+namespace {
+const int cacheTtlSeconds = 30;
+const int fileRowsMeta = qRegisterMetaType<QVector<FileRow>>();
+}
+
 QVector<FileRow> FileService::listForProject(qint64 projectId)
 {
     QVector<FileRow> files;
     if (projectId <= 0)
         return files;
+
+    const QString cacheKey = QStringLiteral("files.list.%1").arg(projectId);
+    if (const QVariant cached = Cache::instance().get(cacheKey); cached.isValid())
+        return cached.value<QVector<FileRow>>();
 
     QSqlQuery query;
     query.prepare(
@@ -33,6 +44,8 @@ QVector<FileRow> FileService::listForProject(qint64 projectId)
         row.sizeBytes = query.value(4).toLongLong();
         files.append(row);
     }
+
+    Cache::instance().set(cacheKey, QVariant::fromValue(files), cacheTtlSeconds);
     return files;
 }
 
@@ -95,6 +108,8 @@ QString FileService::upload(const QString& sourcePath, qint64 projectId,
             *error = "could not record the file.";
         return QString();
     }
+
+    Cache::instance().invalidatePrefix("files.");
     return source.fileName();
 }
 
@@ -121,6 +136,7 @@ bool FileService::remove(qint64 id, QString* error)
 
     // the row is gone; losing the disk file now is only untidy
     QFile::remove(storageRoot() + "/" + storageKey);
+    Cache::instance().invalidatePrefix("files.");
     return true;
 }
 

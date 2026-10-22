@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMetaType>
 #include <QString>
 #include <QVector>
 
@@ -8,8 +9,11 @@ struct ProjectRef {
     QString name;
 };
 
+Q_DECLARE_METATYPE(QVector<ProjectRef>)
+
 // day 4 needs two things from projects: the list for the selector and a
-// default project to work in. day 3 extends this with the rest of the crud
+// default project to work in. day 3 extends this with the rest of the
+// crud. the list is cached (day 8) and invalidated on changes
 class ProjectService
 {
 public:

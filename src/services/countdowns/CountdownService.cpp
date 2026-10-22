@@ -3,12 +3,24 @@
 #include <QSqlQuery>
 #include <QVariant>
 
+#include "src/cache/Cache.hpp"
+
 namespace {
+
+const int cacheTtlSeconds = 30;
+const int countdownRowsMeta = qRegisterMetaType<QVector<CountdownRow>>();
 
 int countDue(qint64 projectId, bool upcoming)
 {
     if (projectId <= 0)
         return 0;
+
+    const QString cacheKey = QStringLiteral("countdowns.counts.%1.%2")
+                                 .arg(projectId)
+                                 .arg(upcoming ? "upcoming" : "past");
+
+    if (const QVariant cached = Cache::instance().get(cacheKey); cached.isValid())
+        return cached.toInt();
 
     QSqlQuery query;
     query.prepare(QString(
@@ -19,7 +31,10 @@ int countDue(qint64 projectId, bool upcoming)
 
     if (!query.exec() || !query.next())
         return 0;
-    return query.value(0).toInt();
+
+    const int count = query.value(0).toInt();
+    Cache::instance().set(cacheKey, count, cacheTtlSeconds);
+    return count;
 }
 
 }
@@ -29,6 +44,10 @@ QVector<CountdownRow> CountdownService::listForProject(qint64 projectId)
     QVector<CountdownRow> countdowns;
     if (projectId <= 0)
         return countdowns;
+
+    const QString cacheKey = QStringLiteral("countdowns.list.%1").arg(projectId);
+    if (const QVariant cached = Cache::instance().get(cacheKey); cached.isValid())
+        return cached.value<QVector<CountdownRow>>();
 
     QSqlQuery query;
     query.prepare(
@@ -49,6 +68,8 @@ QVector<CountdownRow> CountdownService::listForProject(qint64 projectId)
         row.dueTime = query.value(4).toDateTime();
         countdowns.append(row);
     }
+
+    Cache::instance().set(cacheKey, QVariant::fromValue(countdowns), cacheTtlSeconds);
     return countdowns;
 }
 
@@ -71,6 +92,8 @@ qint64 CountdownService::create(qint64 projectId, const QString& title,
 
     if (!insert.exec() || !insert.next())
         return 0;
+
+    Cache::instance().invalidatePrefix("countdowns.");
     return insert.value(0).toLongLong();
 }
 
@@ -89,7 +112,11 @@ bool CountdownService::update(qint64 id, const QString& title,
     update.addBindValue(dueTime);
     update.addBindValue(id);
 
-    return update.exec() && update.numRowsAffected() > 0;
+    if (!update.exec() || update.numRowsAffected() == 0)
+        return false;
+
+    Cache::instance().invalidatePrefix("countdowns.");
+    return true;
 }
 
 bool CountdownService::remove(qint64 id)
@@ -97,7 +124,12 @@ bool CountdownService::remove(qint64 id)
     QSqlQuery del;
     del.prepare("delete from countdowns where id = ?");
     del.addBindValue(id);
-    return del.exec() && del.numRowsAffected() > 0;
+
+    if (!del.exec() || del.numRowsAffected() == 0)
+        return false;
+
+    Cache::instance().invalidatePrefix("countdowns.");
+    return true;
 }
 
 int CountdownService::countUpcoming(qint64 projectId)

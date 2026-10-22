@@ -35,6 +35,13 @@ public:
     // re-uses the saved "remember me" token from a previous run
     AuthUser restoreSession();
 
+    // day 7: settings page - checks the current password, stores the new
+    // one hashed, kills the user's sessions (spec: password change
+    // invalidates every session)
+    bool changePassword(qint64 userId, const QString& currentPassword,
+                        const QString& newPassword, const QString& confirmPassword,
+                        QString* error);
+
     // pushes the idle deadline forward, returns false if the session
     // was revoked or already expired (i.e. we should log out)
     bool slideSession(qint64 sessionId);

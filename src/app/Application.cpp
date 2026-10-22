@@ -1,15 +1,16 @@
 #include "src/app/Application.hpp"
 
 #include <QApplication>
-#include <QFile>
 #include <QSqlQuery>
 
 #include "src/data/auth/AuthService.hpp"
 #include "src/data/database/Database.hpp"
 #include "src/infrastructure/config/AppConfig.hpp"
 #include "src/services/projects/ProjectService.hpp"
+#include "src/services/settings/SettingsService.hpp"
 #include "src/ui/auth/LoginScreen.hpp"
 #include "src/ui/main_window/MainWindow.hpp"
+#include "src/ui/styles/Theme.hpp"
 
 namespace {
 
@@ -48,9 +49,7 @@ int Application::run(int argc, char** argv)
     app.setApplicationName("Orbit");
     app.setOrganizationName("Kasnovitch");
 
-    QFile themeFile(":/styles/Theme.qss");
-    if (themeFile.open(QIODevice::ReadOnly | QIODevice::Text))
-        app.setStyleSheet(QString::fromUtf8(themeFile.readAll()));
+    OrbitTheme::apply("dark");
 
     // one connection for the whole run of the app
     Database database;
@@ -68,6 +67,10 @@ int Application::run(int argc, char** argv)
 
     // no-op if the db is down - user.id stays 0 and the panels stay empty
     const AuthUser user = bootstrapIdentity();
+
+    // day 7: the saved theme/timezone etc, straight from the settings table
+    SettingsService::loadCurrent(user.id);
+    OrbitTheme::apply(SettingsService::currentSettings().theme);
 
     MainWindow mainWindow(user);
     LoginScreen login;

@@ -163,6 +163,20 @@ create table project_files (
 )" },
 };
 
+// day 7: per-user preferences, one row per user
+const Table day7Tables[] = {
+    { "settings", R"(
+create table settings (
+    user_id bigint primary key references users (id) on delete cascade,
+    notifications_enabled boolean not null default true,
+    theme text not null default 'dark',
+    timezone text not null default 'UTC',
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+)
+)" },
+};
+
 const char* day1Indexes[] = {
     "create index projects_created_by_idx on projects (created_by)",
     "create index tasks_project_id_idx on tasks (project_id)",
@@ -221,6 +235,7 @@ bool Database::ensureTables()
     if (!applyTables(day1Tables, std::size(day1Tables), created, m_status)
         || !applyTables(day5Tables, std::size(day5Tables), created, m_status)
         || !applyTables(day6Tables, std::size(day6Tables), created, m_status)
+        || !applyTables(day7Tables, std::size(day7Tables), created, m_status)
         || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
         || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
         || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status))

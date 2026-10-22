@@ -4,11 +4,22 @@
 #include <QUrl>
 #include <QVariant>
 
+#include "src/cache/Cache.hpp"
+
+namespace {
+const int cacheTtlSeconds = 30;
+const int linkRowsMeta = qRegisterMetaType<QVector<LinkRow>>();
+}
+
 QVector<LinkRow> LinkService::listForProject(qint64 projectId)
 {
     QVector<LinkRow> links;
     if (projectId <= 0)
         return links;
+
+    const QString cacheKey = QStringLiteral("links.list.%1").arg(projectId);
+    if (const QVariant cached = Cache::instance().get(cacheKey); cached.isValid())
+        return cached.value<QVector<LinkRow>>();
 
     QSqlQuery query;
     query.prepare(
@@ -27,6 +38,8 @@ QVector<LinkRow> LinkService::listForProject(qint64 projectId)
         link.url = query.value(3).toString();
         links.append(link);
     }
+
+    Cache::instance().set(cacheKey, QVariant::fromValue(links), cacheTtlSeconds);
     return links;
 }
 
@@ -65,6 +78,8 @@ bool LinkService::add(qint64 projectId, const QString& title, const QString& url
             *error = "could not save the link.";
         return false;
     }
+
+    Cache::instance().invalidatePrefix("links.");
     return true;
 }
 
@@ -92,7 +107,11 @@ bool LinkService::update(qint64 id, const QString& title, const QString& url,
     update.addBindValue(url.trimmed());
     update.addBindValue(id);
 
-    return update.exec() && update.numRowsAffected() > 0;
+    if (!update.exec() || update.numRowsAffected() == 0)
+        return false;
+
+    Cache::instance().invalidatePrefix("links.");
+    return true;
 }
 
 bool LinkService::remove(qint64 id)
@@ -100,7 +119,12 @@ bool LinkService::remove(qint64 id)
     QSqlQuery del;
     del.prepare("delete from project_links where id = ?");
     del.addBindValue(id);
-    return del.exec() && del.numRowsAffected() > 0;
+
+    if (!del.exec() || del.numRowsAffected() == 0)
+        return false;
+
+    Cache::instance().invalidatePrefix("links.");
+    return true;
 }
 
 QString LinkService::validateUrl(const QString& url)

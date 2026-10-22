@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDateTime>
+#include <QMetaType>
 #include <QString>
 #include <QVector>
 
@@ -12,8 +13,12 @@ struct CountdownRow {
     QDateTime dueTime;
 };
 
+Q_DECLARE_METATYPE(QVector<CountdownRow>)
+
 // day 5: countdowns crud. project_id is optional (global countdowns
-// allowed), lists always come back nearest deadline first
+// allowed), lists always come back nearest deadline first. lists/counts
+// are cached (day 8) but the remaining time on screen is always
+// recalculated from due_time, never from the cache
 class CountdownService
 {
 public:

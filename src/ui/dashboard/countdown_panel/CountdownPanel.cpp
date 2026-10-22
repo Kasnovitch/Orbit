@@ -16,6 +16,7 @@
 #include <QVBoxLayout>
 
 #include "src/services/countdowns/CountdownService.hpp"
+#include "src/services/settings/SettingsService.hpp"
 
 namespace {
 
@@ -189,6 +190,14 @@ void CountdownPanel::reload()
         auto* remainingLabel = new QLabel(formatRemaining(row.dueTime), item);
         remainingLabel->setObjectName("rowRemaining");
         titles->addWidget(remainingLabel);
+
+        // absolute due time in the user's preferred timezone
+        auto* dueLabel = new QLabel(
+            QStringLiteral("due %1").arg(SettingsService::formatInTimezone(
+                row.dueTime, QStringLiteral("d MMM, HH:mm"))),
+            item);
+        dueLabel->setObjectName("rowDetail");
+        titles->addWidget(dueLabel);
 
         rowLayout->addLayout(titles, 1);
 

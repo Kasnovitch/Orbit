@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMetaType>
 #include <QString>
 #include <QVector>
 
@@ -10,7 +11,10 @@ struct LinkRow {
     QString url;
 };
 
-// day 6: project links. urls are validated here, not in the ui
+Q_DECLARE_METATYPE(QVector<LinkRow>)
+
+// day 6: project links. urls are validated here, not in the ui. lists go
+// through the day 8 cache, mutations invalidate them
 class LinkService
 {
 public:

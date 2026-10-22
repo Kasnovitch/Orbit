@@ -2,6 +2,7 @@
 
 #include <QWidget>
 
+class QLabel;
 class CountdownPanel;
 class FilesPanel;
 class LinksPanel;
@@ -12,16 +13,19 @@ class Dashboard : public QWidget
 {
     Q_OBJECT
 public:
-    explicit Dashboard(qint64 userId, QWidget* parent = nullptr);
+    explicit Dashboard(qint64 userId, const QString& displayName,
+                       QWidget* parent = nullptr);
 
     // everything on the dashboard follows the selected project
     void setProject(qint64 projectId);
 
 private:
     void refreshStats();
+    void updateClock();
 
     qint64 m_userId = 0;
     qint64 m_projectId = 0;
+    QLabel* m_clockLabel = nullptr;
     StatTile* m_activeTasks = nullptr;
     StatTile* m_completedTasks = nullptr;
     StatTile* m_upcomingDeadlines = nullptr;

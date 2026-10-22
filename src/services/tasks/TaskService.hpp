@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDateTime>
+#include <QMetaType>
 #include <QString>
 #include <QVector>
 
@@ -13,7 +14,10 @@ struct TaskRow {
     QDateTime dueTime; // invalid = no due date
 };
 
-// day 4: tasks crud, always tied to a project (project_id is required)
+Q_DECLARE_METATYPE(QVector<TaskRow>)
+
+// day 4: tasks crud, always tied to a project (project_id is required).
+// lists and counts go through the day 8 cache, mutations invalidate it
 class TaskService
 {
 public:

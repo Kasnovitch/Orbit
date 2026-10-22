@@ -53,6 +53,26 @@ QLabel#sidebarUser {
     padding-top: 12px;
 }
 
+QLabel#dashboardGreeting {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+QLabel#dashboardClock {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2dd4bf;
+}
+
+QLabel#settingsHint {
+    color: #9aa1b2;
+    font-size: 12px;
+}
+
+QLabel#selectorLabel {
+    color: #9aa1b2;
+}
+
 QPushButton#logoutButton {
     background-color: transparent;
     border: 1px solid #323643;
@@ -257,4 +277,81 @@ QComboBox#rowCombo {
 
 QScrollArea#panelScroll, QScrollArea#panelScroll > QWidget > QWidget {
     background: transparent;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #3a3f4d;
+    border-radius: 5px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #4a5060;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    height: 0;
+    width: 0;
+}
+
+QLineEdit, QDateTimeEdit, QPlainTextEdit {
+    background-color: #24272f;
+    border: 1px solid #3a3f4d;
+    border-radius: 8px;
+    color: #e8eaf0;
+    padding: 8px 12px;
+    selection-background-color: #14b8a6;
+    selection-color: #ffffff;
+}
+
+QLineEdit:focus, QDateTimeEdit:focus, QPlainTextEdit:focus {
+    border-color: #14b8a6;
+}
+
+QDialog {
+    background-color: #1b1d23;
+}
+
+QFormLayout QLabel {
+    color: #9aa1b2;
+}
+
+QDialogButtonBox QPushButton {
+    background-color: #24272f;
+    border: 1px solid #3a3f4d;
+    border-radius: 8px;
+    color: #e8eaf0;
+    padding: 8px 16px;
+}
+
+QDialogButtonBox QPushButton:hover {
+    background-color: #2b2f39;
+}
+
+QDialogButtonBox QPushButton[default="true"] {
+    background-color: #14b8a6;
+    border: none;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QDialogButtonBox QPushButton[default="true"]:hover {
+    background-color: #2dd4bf;
+}
+
+QToolTip {
+    background-color: #2b2f39;
+    color: #e8eaf0;
+    border: 1px solid #3a3f4d;
+    padding: 6px;
+}
+
+QMessageBox {
+    background-color: #1b1d23;
 }

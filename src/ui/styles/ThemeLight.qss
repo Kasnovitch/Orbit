@@ -1,0 +1,336 @@
+* {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+}
+
+QMainWindow, QWidget#loginScreen {
+    background-color: #f4f6f9;
+    color: #1d2330;
+}
+
+QLabel {
+    color: #1d2330;
+}
+
+QLabel#tileTitle, QLabel#panelTitle, QLabel#emptyHint, QLabel#loginNote,
+QLabel#sidebarBrand, QLabel#loginSubtitle, QLabel#selectorLabel {
+    color: #5b6472;
+}
+
+QLabel#tileTitle {
+    font-size: 13px;
+}
+
+QLabel#tileValue {
+    font-size: 26px;
+    font-weight: 600;
+    color: #121722;
+}
+
+QLabel#panelTitle {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QLabel#pageHeading {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+QLabel#loginTitle {
+    font-size: 26px;
+    font-weight: 700;
+}
+
+QLabel#sidebarBrand {
+    font-size: 16px;
+    font-weight: 700;
+    padding-bottom: 16px;
+}
+
+QLabel#sidebarUser {
+    font-size: 12px;
+    padding-top: 12px;
+    color: #3c4657;
+}
+
+QLabel#dashboardGreeting {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+QLabel#dashboardClock {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0d9488;
+}
+
+QLabel#rowTitle {
+    color: #121722;
+    font-size: 13px;
+}
+
+QLabel#rowDetail {
+    color: #5b6472;
+    font-size: 11px;
+}
+
+QLabel#rowRemaining {
+    color: #0d9488;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QLabel#settingsHint {
+    color: #5b6472;
+    font-size: 12px;
+}
+
+QPushButton#logoutButton {
+    background-color: transparent;
+    border: 1px solid #d8dee7;
+    border-radius: 8px;
+    color: #3c4657;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+QPushButton#logoutButton:hover {
+    background-color: #e7ebf1;
+    color: #b42318;
+}
+
+QFrame#statTile, QFrame#panel {
+    background-color: #ffffff;
+    border: 1px solid #d8dee7;
+    border-radius: 10px;
+}
+
+QFrame#itemRow {
+    background-color: #f8fafc;
+    border: 1px solid #d8dee7;
+    border-radius: 8px;
+}
+
+QFrame#sidebar {
+    background-color: #eef1f5;
+    border-right: 1px solid #d8dee7;
+}
+
+QPushButton#navButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #3c4657;
+    padding: 10px 12px;
+    text-align: left;
+}
+
+QPushButton#navButton:hover {
+    background-color: #e2e7ee;
+}
+
+QPushButton#navButton:checked {
+    background-color: #0d9488;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QPushButton#primaryButton {
+    background-color: #0d9488;
+    border: none;
+    border-radius: 8px;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 12px;
+}
+
+QPushButton#primaryButton:hover {
+    background-color: #0f766e;
+}
+
+QPushButton:disabled {
+    color: #9aa3b2;
+}
+
+QPushButton#rowButton {
+    background-color: transparent;
+    border: 1px solid #cfd6e0;
+    border-radius: 6px;
+    color: #3c4657;
+    padding: 4px 10px;
+}
+
+QPushButton#rowButton:hover {
+    background-color: #e7ebf1;
+    color: #121722;
+}
+
+QLineEdit, QDateTimeEdit, QPlainTextEdit {
+    background-color: #ffffff;
+    border: 1px solid #cfd6e0;
+    border-radius: 8px;
+    color: #1d2330;
+    padding: 8px 12px;
+    selection-background-color: #0d9488;
+    selection-color: #ffffff;
+}
+
+QLineEdit:focus, QDateTimeEdit:focus, QPlainTextEdit:focus {
+    border-color: #0d9488;
+}
+
+QLineEdit#loginInput {
+    background-color: #ffffff;
+    border: 1px solid #cfd6e0;
+    border-radius: 8px;
+    color: #1d2330;
+    padding: 10px 12px;
+}
+
+QLineEdit#loginInput:focus {
+    border-color: #0d9488;
+}
+
+QCheckBox {
+    color: #1d2330;
+    spacing: 8px;
+}
+
+QCheckBox#rememberCheck {
+    color: #5b6472;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #cfd6e0;
+    border-radius: 4px;
+    background-color: #ffffff;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #0d9488;
+    border-color: #0d9488;
+}
+
+QPushButton#linkButton {
+    background-color: transparent;
+    border: none;
+    color: #0d7a70;
+    padding: 4px;
+    text-align: left;
+}
+
+QPushButton#linkButton:hover {
+    color: #0f766e;
+    text-decoration: underline;
+}
+
+QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #cfd6e0;
+    border-radius: 8px;
+    color: #1d2330;
+    padding: 8px 12px;
+    min-width: 160px;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #cfd6e0;
+    color: #1d2330;
+    selection-background-color: #0d9488;
+    selection-color: #ffffff;
+}
+
+QSplitter::handle {
+    background-color: transparent;
+    width: 8px;
+}
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: #c9d1dc;
+    border-radius: 5px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #aab5c4;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #c9d1dc;
+    border-radius: 5px;
+    min-width: 30px;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    height: 0;
+    width: 0;
+}
+
+QScrollArea#panelScroll, QScrollArea#panelScroll > QWidget > QWidget {
+    background: transparent;
+}
+
+QDialog {
+    background-color: #f4f6f9;
+}
+
+QFormLayout QLabel {
+    color: #5b6472;
+}
+
+QDialogButtonBox QPushButton {
+    background-color: #ffffff;
+    border: 1px solid #cfd6e0;
+    border-radius: 8px;
+    color: #1d2330;
+    padding: 8px 16px;
+}
+
+QDialogButtonBox QPushButton:hover {
+    background-color: #e7ebf1;
+}
+
+QDialogButtonBox QPushButton[default="true"] {
+    background-color: #0d9488;
+    border: none;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QDialogButtonBox QPushButton[default="true"]:hover {
+    background-color: #0f766e;
+}
+
+QToolTip {
+    background-color: #121722;
+    color: #f2f4fa;
+    border: 1px solid #3c4657;
+    padding: 6px;
+}
+
+QMessageBox {
+    background-color: #f4f6f9;
+}

@@ -75,7 +75,7 @@ MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
     topBar->addWidget(m_projectSelector);
 
     m_pages = new QStackedWidget(content);
-    m_dashboard = new Dashboard(m_user.id, m_pages);
+    m_dashboard = new Dashboard(m_user.id, m_user.displayName, m_pages);
     m_pages->addWidget(m_dashboard);
     m_pages->addWidget(buildPlaceholderPage(
         "Tasks", "The task list lives on the dashboard for now, tied to the selected project."));
@@ -85,7 +85,7 @@ MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
         "Projects", "Projects arrive on day 3 \u2014 crud plus the project selector."));
     m_pages->addWidget(buildPlaceholderPage(
         "Teams", "Teams stay a placeholder until collaboration is needed."));
-    m_pages->addWidget(new SettingsScreen(m_pages));
+    m_pages->addWidget(new SettingsScreen(m_user.id, m_pages));
 
     contentLayout->addLayout(topBar);
     contentLayout->addWidget(m_pages, 1);

@@ -21,6 +21,7 @@ qt_add_executable(Orbit WIN32
     src/ui/dashboard/files_panel/FilesPanel.cpp
     src/ui/settings/SettingsScreen.cpp
     src/ui/widgets/Widgets.cpp
+    src/ui/styles/Theme.cpp
     src/infrastructure/config/AppConfig.cpp
     src/data/database/Database.cpp
     src/data/auth/AuthService.cpp
@@ -30,6 +31,8 @@ qt_add_executable(Orbit WIN32
     src/services/countdowns/CountdownService.cpp
     src/services/links/LinkService.cpp
     src/services/files/FileService.cpp
+    src/services/settings/SettingsService.cpp
+    src/cache/Cache.cpp
     src/ui/resources/Resources.qrc
 )
 

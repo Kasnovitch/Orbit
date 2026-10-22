@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QMetaType>
 #include <QString>
 #include <QVector>
 
@@ -11,8 +12,11 @@ struct FileRow {
     qint64 sizeBytes = 0;
 };
 
+Q_DECLARE_METATYPE(QVector<FileRow>)
+
 // day 6: project files. the bytes live on disk under the app's data
-// folder; the database only stores the row (storage_key points at the file)
+// folder; the database only stores the row (storage_key points at the
+// file). lists are cached (day 8), uploads/removes invalidate them
 class FileService
 {
 public:

@@ -243,6 +243,61 @@ void AuthService::logout(const AuthUser& user)
     forgetToken();
 }
 
+bool AuthService::changePassword(qint64 userId, const QString& currentPassword,
+                                 const QString& newPassword,
+                                 const QString& confirmPassword, QString* error)
+{
+    if (userId <= 0) {
+        if (error)
+            *error = "no user signed in.";
+        return false;
+    }
+    if (newPassword.isEmpty()) {
+        if (error)
+            *error = "pick a new password.";
+        return false;
+    }
+    if (newPassword != confirmPassword) {
+        if (error)
+            *error = "the two passwords don't match.";
+        return false;
+    }
+
+    QSqlQuery find;
+    find.prepare("select password_hash from users where id = ?");
+    find.addBindValue(userId);
+    if (!find.exec() || !find.next()) {
+        if (error)
+            *error = "that account no longer exists.";
+        return false;
+    }
+
+    if (!verifyPassword(currentPassword, find.value(0).toString())) {
+        if (error)
+            *error = "the current password is wrong.";
+        return false;
+    }
+
+    QSqlQuery update;
+    update.prepare("update users set password_hash = ?, updated_at = now() where id = ?");
+    update.addBindValue(hashPassword(newPassword));
+    update.addBindValue(userId);
+    if (!update.exec()) {
+        if (error)
+            *error = "could not save the new password.";
+        return false;
+    }
+
+    // kill every session for this user - the sessions table arrives with
+    // day 2, so until then this silently fails and that's fine
+    QSqlQuery revoke;
+    revoke.exec(QString(
+        "update sessions set revoked_at = now() where user_id = %1 "
+        "and revoked_at is null").arg(userId));
+
+    return true;
+}
+
 QString AuthService::hashPassword(const QString& password)
 {
     const QByteArray salt = randomBytes(16);

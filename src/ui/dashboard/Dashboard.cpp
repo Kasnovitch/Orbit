@@ -1,7 +1,10 @@
 #include "src/ui/dashboard/Dashboard.hpp"
 
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QSplitter>
+#include <QTime>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include "src/services/countdowns/CountdownService.hpp"
@@ -12,13 +15,40 @@
 #include "src/ui/dashboard/task_panel/TaskPanel.hpp"
 #include "src/ui/widgets/Widgets.hpp"
 
-Dashboard::Dashboard(qint64 userId, QWidget* parent)
+Dashboard::Dashboard(qint64 userId, const QString& displayName, QWidget* parent)
     : QWidget(parent)
     , m_userId(userId)
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 24, 24, 24);
     layout->setSpacing(16);
+
+    // greeting + live clock, per the reference screenshot
+    const int hour = QTime::currentTime().hour();
+    const QString partOfDay = hour < 12 ? QStringLiteral("morning")
+        : hour < 18                             ? QStringLiteral("afternoon")
+                                                : QStringLiteral("evening");
+    const QString name = displayName.isEmpty() ? QStringLiteral("there") : displayName;
+
+    auto* header = new QHBoxLayout();
+    auto* greeting = new QLabel(
+        QStringLiteral("Good %1, %2").arg(partOfDay, name), this);
+    greeting->setObjectName("dashboardGreeting");
+
+    m_clockLabel = new QLabel(this);
+    m_clockLabel->setObjectName("dashboardClock");
+
+    header->addWidget(greeting);
+    header->addStretch();
+    header->addWidget(m_clockLabel);
+
+    auto* clockTimer = new QTimer(this);
+    clockTimer->setInterval(1000);
+    connect(clockTimer, &QTimer::timeout, this, &Dashboard::updateClock);
+    clockTimer->start();
+    updateClock();
+
+    layout->addLayout(header);
 
     auto* tiles = new QHBoxLayout();
     tiles->setSpacing(16);
@@ -88,4 +118,10 @@ void Dashboard::refreshStats()
     CountdownService countdowns;
     m_activeCountdowns->setValue(QString::number(countdowns.countUpcoming(m_projectId)));
     m_completedCountdowns->setValue(QString::number(countdowns.countPast(m_projectId)));
+}
+
+void Dashboard::updateClock()
+{
+    m_clockLabel->setText(
+        QTime::currentTime().toString(QStringLiteral("ddd d MMM  \u00b7  HH:mm:ss")));
 }
