@@ -20,6 +20,7 @@ qt_add_executable(Orbit WIN32
     src/ui/dashboard/task_panel/TaskPanel.cpp
     src/ui/dashboard/links_panel/LinksPanel.cpp
     src/ui/dashboard/files_panel/FilesPanel.cpp
+    src/ui/projects/ProjectsScreen.cpp
     src/ui/settings/SettingsScreen.cpp
     src/ui/widgets/Widgets.cpp
     src/ui/styles/Theme.cpp
@@ -28,6 +29,7 @@ qt_add_executable(Orbit WIN32
     src/data/auth/AuthService.cpp
     src/data/auth/SessionWatch.cpp
     src/services/projects/ProjectService.cpp
+    src/services/permissions/PermissionService.cpp
     src/services/tasks/TaskService.cpp
     src/services/countdowns/CountdownService.cpp
     src/services/links/LinkService.cpp

@@ -10,6 +10,7 @@
 
 #include "src/ui/dashboard/Dashboard.hpp"
 #include "src/ui/dashboard/project_selector/ProjectSelector.hpp"
+#include "src/ui/projects/ProjectsScreen.hpp"
 #include "src/ui/settings/SettingsScreen.hpp"
 
 MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
@@ -81,8 +82,8 @@ MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
         "Tasks", "The task list lives on the dashboard for now, tied to the selected project."));
     m_pages->addWidget(buildPlaceholderPage(
         "Countdowns", "Countdowns live on the dashboard panel - nearest deadline first, global ones included."));
-    m_pages->addWidget(buildPlaceholderPage(
-        "Projects", "Projects arrive on day 3 \u2014 crud plus the project selector."));
+    auto* projectsPage = new ProjectsScreen(m_user, m_pages);
+    m_pages->addWidget(projectsPage);
     m_pages->addWidget(buildPlaceholderPage(
         "Teams", "Teams stay a placeholder until collaboration is needed."));
     m_pages->addWidget(new SettingsScreen(m_user.id, m_pages));
@@ -97,6 +98,9 @@ MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
     // load the projects now that the dashboard is listening
     connect(m_projectSelector, &ProjectSelector::projectChanged,
             m_dashboard, &Dashboard::setProject);
+    // the projects page can add/rename/remove - keep the selector in step
+    connect(projectsPage, &ProjectsScreen::projectsChanged,
+            m_projectSelector, &ProjectSelector::reload);
     m_projectSelector->reload();
 
     m_navButtons.first()->setChecked(true);

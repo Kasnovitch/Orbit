@@ -137,6 +137,21 @@ create table sessions (
 )" },
 };
 
+// day 3: explicit grants for non-owners. owner (created_by) and admins
+// never need a row - they bypass the table
+const Table day3Tables[] = {
+    { "permissions", R"(
+create table permissions (
+    id bigserial primary key,
+    user_id bigint not null references users (id) on delete cascade,
+    project_id bigint not null references projects (id) on delete cascade,
+    can_write boolean not null default false,
+    created_at timestamptz not null default now(),
+    constraint permissions_user_project_unique unique (user_id, project_id)
+)
+)" },
+};
+
 // day 5: countdowns. project_id stays nullable for global countdowns
 const Table day5Tables[] = {
     { "countdowns", R"(
@@ -208,6 +223,11 @@ const char* day2Indexes[] = {
     "create index sessions_expires_at_idx on sessions (expires_at)",
 };
 
+const char* day3Indexes[] = {
+    "create index permissions_user_id_idx on permissions (user_id)",
+    "create index permissions_project_id_idx on permissions (project_id)",
+};
+
 const char* day5Indexes[] = {
     "create index countdowns_project_id_idx on countdowns (project_id)",
     "create index countdowns_due_time_idx on countdowns (due_time)",
@@ -257,11 +277,13 @@ bool Database::ensureTables()
 
     if (!applyTables(day1Tables, std::size(day1Tables), created, m_status)
         || !applyTables(day2Tables, std::size(day2Tables), created, m_status)
+        || !applyTables(day3Tables, std::size(day3Tables), created, m_status)
         || !applyTables(day5Tables, std::size(day5Tables), created, m_status)
         || !applyTables(day6Tables, std::size(day6Tables), created, m_status)
         || !applyTables(day7Tables, std::size(day7Tables), created, m_status)
         || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
         || !applyIndexes(day2Indexes, std::size(day2Indexes), m_status)
+        || !applyIndexes(day3Indexes, std::size(day3Indexes), m_status)
         || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
         || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status))
         return false;

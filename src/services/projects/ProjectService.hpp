@@ -1,26 +1,55 @@
 #pragma once
 
+#include <QDateTime>
 #include <QMetaType>
 #include <QString>
 #include <QVector>
+
+struct AuthUser;
 
 struct ProjectRef {
     qint64 id = 0;
     QString name;
 };
 
+struct ProjectRow {
+    qint64 id = 0;
+    QString name;
+    QString description;
+    QString status; // active | archived
+    qint64 createdBy = 0;
+    QString createdByName;
+    QDateTime createdDate;
+};
+
 Q_DECLARE_METATYPE(QVector<ProjectRef>)
 
-// day 4 needs two things from projects: the list for the selector and a
-// default project to work in. day 3 extends this with the rest of the
-// crud. the list is cached (day 8) and invalidated on changes
+// projects crud with the day 3 permission model: creator and admins can
+// modify, everyone else needs a permissions row (see PermissionService).
+// the selector list is cached (day 8) and invalidated on changes
 class ProjectService
 {
 public:
     QVector<ProjectRef> listActive();
 
-    // temporary bootstrap while projects crud isn't built: makes sure there
-    // is at least one active project to put tasks/countdowns/links/files in.
-    // returns its id, or 0 on failure
+    // for the Projects page: every project, archived included
+    QVector<ProjectRow> listAll();
+
+    // returns the new id, or 0 (error filled). name is required
+    qint64 create(const QString& name, const QString& description,
+                  qint64 createdBy, QString* error);
+
+    bool update(qint64 projectId, const QString& name,
+                const QString& description, const AuthUser& by, QString* error);
+
+    // archive/unarchive flips status + archived_at
+    bool archive(qint64 projectId, const AuthUser& by, QString* error);
+    bool unarchive(qint64 projectId, const AuthUser& by, QString* error);
+
+    // hard delete; children go with it (tasks/countdowns/links/files
+    // cascade in the database - confirmed in the UI prompt)
+    bool remove(qint64 projectId, const AuthUser& by, QString* error);
+
+    // one default project so the selector never starts empty
     qint64 ensureGeneralProject(qint64 ownerId);
 };
