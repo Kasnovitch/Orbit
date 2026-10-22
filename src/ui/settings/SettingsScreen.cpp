@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 #include "src/data/auth/AuthService.hpp"
@@ -16,6 +17,31 @@
 #include "src/services/settings/SettingsService.hpp"
 #include "src/ui/styles/Theme.hpp"
 #include "src/ui/widgets/Widgets.hpp"
+
+namespace {
+
+// one shared shape for every form on this page: same label column, same
+// field width, same row spacing - so the panels line up down the page
+QFormLayout* makeForm()
+{
+    auto* form = new QFormLayout();
+    form->setSpacing(10);
+    form->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    form->setFormAlignment(Qt::AlignTop);
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    form->setHorizontalSpacing(16);
+    form->setVerticalSpacing(10);
+    return form;
+}
+
+// checkboxes sit in the field column, not under the labels, so their
+// left edge lines up with the combo boxes and inputs above them
+void addCheckRow(QFormLayout* form, const QString& label, QCheckBox* check)
+{
+    form->addRow(label, check);
+}
+
+}
 
 SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
     : QWidget(parent)
@@ -27,20 +53,21 @@ SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
 
     auto* heading = new QLabel("Settings", this);
     heading->setObjectName("pageHeading");
+    layout->addWidget(heading);
 
+    // ---- appearance -------------------------------------------------
     auto* appearance = new Panel("Appearance", this);
-    auto* appearanceForm = new QFormLayout();
-    appearanceForm->setSpacing(10);
+    auto* appearanceForm = makeForm();
 
     m_themeBox = new QComboBox(appearance);
     m_themeBox->addItem("System", "system");
     m_themeBox->addItem("Dark", "dark");
     m_themeBox->addItem("Light", "light");
-    m_themeBox->setMinimumWidth(200);
+    m_themeBox->setMinimumWidth(220);
     appearanceForm->addRow("Theme", m_themeBox);
 
     m_timezoneBox = new QComboBox(appearance);
-    m_timezoneBox->setMinimumWidth(200);
+    m_timezoneBox->setMinimumWidth(220);
     for (int offsetHours = -12; offsetHours <= 14; ++offsetHours) {
         const QString label = offsetHours == 0
             ? QStringLiteral("UTC")
@@ -58,31 +85,80 @@ SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
     timezoneHint->setObjectName("settingsHint");
     timezoneHint->setWordWrap(true);
     appearance->bodyLayout()->addWidget(timezoneHint);
+    layout->addWidget(appearance);
 
+    // ---- notifications ----------------------------------------------
+    auto* notifications = new Panel("Notifications", this);
+    auto* notificationsForm = makeForm();
+
+    m_notifications = new QCheckBox("Desktop notifications", notifications);
+    addCheckRow(notificationsForm, "Enable", m_notifications);
+
+    m_notifyLead = new QSpinBox(notifications);
+    m_notifyLead->setRange(1, 240);
+    m_notifyLead->setSuffix(" min before");
+    m_notifyLead->setMinimumWidth(220);
+    notificationsForm->addRow("Remind me", m_notifyLead);
+
+    notifications->bodyLayout()->addLayout(notificationsForm);
+
+    auto* notifyHint = new QLabel(
+        "Orbit pops a notification when a countdown is due within the lead "
+        "time, or a task is due/overdue. Notifications need the tray icon, "
+        "which appears while you're logged in.",
+        notifications);
+    notifyHint->setObjectName("settingsHint");
+    notifyHint->setWordWrap(true);
+    notifications->bodyLayout()->addWidget(notifyHint);
+    layout->addWidget(notifications);
+
+    // ---- window -----------------------------------------------------
+    auto* windowPanel = new Panel("Window", this);
+    auto* windowForm = makeForm();
+
+    m_alwaysOnTop = new QCheckBox("Keep Orbit above other windows", windowPanel);
+    addCheckRow(windowForm, "Always on top", m_alwaysOnTop);
+
+    m_minimizeToTray = new QCheckBox("Hide to the tray icon when closing", windowPanel);
+    addCheckRow(windowForm, "Minimize to tray", m_minimizeToTray);
+
+    windowPanel->bodyLayout()->addLayout(windowForm);
+
+    auto* windowHint = new QLabel(
+        "With minimize-to-tray, closing the window keeps Orbit running in "
+        "the background - open it again from the tray icon, or Quit from "
+        "the tray menu.",
+        windowPanel);
+    windowHint->setObjectName("settingsHint");
+    windowHint->setWordWrap(true);
+    windowPanel->bodyLayout()->addWidget(windowHint);
+    layout->addWidget(windowPanel);
+
+    // ---- account ----------------------------------------------------
     auto* account = new Panel("Account", this);
-    auto* accountForm = new QFormLayout();
-    accountForm->setSpacing(10);
-
-    m_notifications = new QCheckBox("Enable notifications", account);
-    accountForm->addRow(QString(), m_notifications);
+    auto* accountForm = makeForm();
 
     m_currentPassword = new QLineEdit(account);
     m_currentPassword->setEchoMode(QLineEdit::Password);
     m_currentPassword->setPlaceholderText("Current password");
+    m_currentPassword->setMinimumWidth(220);
     accountForm->addRow("Current", m_currentPassword);
 
     m_newPassword = new QLineEdit(account);
     m_newPassword->setEchoMode(QLineEdit::Password);
     m_newPassword->setPlaceholderText("New password");
+    m_newPassword->setMinimumWidth(220);
     accountForm->addRow("New", m_newPassword);
 
     m_confirmPassword = new QLineEdit(account);
     m_confirmPassword->setEchoMode(QLineEdit::Password);
     m_confirmPassword->setPlaceholderText("Repeat the new password");
+    m_confirmPassword->setMinimumWidth(220);
     accountForm->addRow("Repeat", m_confirmPassword);
 
     auto* passwordButton = new QPushButton("Change password", account);
     passwordButton->setObjectName("primaryButton");
+    passwordButton->setMaximumWidth(220);
     connect(passwordButton, &QPushButton::clicked, this, &SettingsScreen::changePassword);
     accountForm->addRow(QString(), passwordButton);
 
@@ -92,10 +168,17 @@ SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
     accountForm->addRow(QString(), m_passwordHint);
 
     account->bodyLayout()->addLayout(accountForm);
+    layout->addWidget(account);
 
+    // day 9: only admins see the users + audit sections
+    if (m_user.role == "admin")
+        buildAdminSection(this, layout);
+
+    // ---- save row ---------------------------------------------------
     auto* saveRow = new QHBoxLayout();
     auto* saveButton = new QPushButton("Save settings", this);
     saveButton->setObjectName("primaryButton");
+    saveButton->setMaximumWidth(220);
     connect(saveButton, &QPushButton::clicked, this, &SettingsScreen::save);
 
     m_savedHint = new QLabel(this);
@@ -104,14 +187,6 @@ SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
     saveRow->addWidget(saveButton);
     saveRow->addWidget(m_savedHint);
     saveRow->addStretch();
-
-    layout->addWidget(heading);
-    layout->addWidget(appearance);
-    layout->addWidget(account);
-
-    // day 9: only admins see the users + audit sections
-    if (m_user.role == "admin")
-        buildAdminSection(this, layout);
 
     layout->addLayout(saveRow);
     layout->addStretch();
@@ -161,7 +236,7 @@ void SettingsScreen::reloadAdminUsers()
         auto* row = new QFrame(this);
         auto* line = new QHBoxLayout(row);
         line->setContentsMargins(0, 2, 0, 2);
-        line->setSpacing(8);
+        line->setSpacing(12);
 
         auto* name = new QLabel(
             user.username
@@ -169,13 +244,14 @@ void SettingsScreen::reloadAdminUsers()
                        ? QString()
                        : " (" + user.displayName + ")"),
             row);
-        name->setMinimumWidth(140);
+        name->setFixedWidth(160);
         line->addWidget(name);
 
         auto* roleBox = new QComboBox(row);
         roleBox->addItem("user", "user");
         roleBox->addItem("admin", "admin");
         roleBox->setCurrentText(user.role);
+        roleBox->setMinimumWidth(120);
         const qint64 targetId = user.id;
         connect(roleBox, &QComboBox::currentTextChanged, this,
                 [this, targetId](const QString& role) {
@@ -259,6 +335,10 @@ void SettingsScreen::load()
     m_timezoneBox->setCurrentIndex(zoneIndex >= 0 ? zoneIndex : 0);
 
     m_notifications->setChecked(settings.notificationsEnabled);
+    m_notifyLead->setValue(
+        settings.notifyMinutesBefore > 0 ? settings.notifyMinutesBefore : 15);
+    m_alwaysOnTop->setChecked(settings.alwaysOnTop);
+    m_minimizeToTray->setChecked(settings.minimizeToTray);
 }
 
 void SettingsScreen::save()
@@ -268,17 +348,22 @@ void SettingsScreen::save()
     settings.notificationsEnabled = m_notifications->isChecked();
     settings.theme = m_themeBox->currentData().toString();
     settings.timezone = m_timezoneBox->currentData().toString();
+    settings.notifyMinutesBefore = m_notifyLead->value();
+    settings.alwaysOnTop = m_alwaysOnTop->isChecked();
+    settings.minimizeToTray = m_minimizeToTray->isChecked();
 
     if (!SettingsService::save(m_user.id, settings)) {
         m_savedHint->setText("Could not save - is the database reachable?");
         return;
     }
 
-    // refresh the in-memory copy (timezone formatting) and restyle live
+    // refresh the in-memory copy (timezone formatting, tray decisions)
+    // and restyle live
     SettingsService::loadCurrent(m_user.id);
     OrbitTheme::apply(settings.theme);
 
     m_savedHint->setText("Saved.");
+    emit settingsChanged();
 }
 
 void SettingsScreen::changePassword()

@@ -3,6 +3,8 @@
 #include <QSqlQuery>
 #include <QVariant>
 
+#include "src/services/audit/AuditService.hpp"
+
 namespace {
 SettingsRow s_current;
 }
@@ -16,7 +18,9 @@ SettingsRow SettingsService::get(qint64 userId)
 
     QSqlQuery query;
     query.prepare(
-        "select notifications_enabled, theme, timezone from settings where user_id = ?");
+        "select notifications_enabled, theme, timezone, "
+        "always_on_top, minimize_to_tray, notify_minutes_before "
+        "from settings where user_id = ?");
     query.addBindValue(userId);
 
     if (!query.exec() || !query.next())
@@ -25,6 +29,9 @@ SettingsRow SettingsService::get(qint64 userId)
     settings.notificationsEnabled = query.value(0).toBool();
     settings.theme = query.value(1).toString();
     settings.timezone = query.value(2).toString();
+    settings.alwaysOnTop = query.value(3).toBool();
+    settings.minimizeToTray = query.value(4).toBool();
+    settings.notifyMinutesBefore = query.value(5).toInt();
     return settings;
 }
 
@@ -35,18 +42,33 @@ bool SettingsService::save(qint64 userId, const SettingsRow& settings)
 
     QSqlQuery upsert;
     upsert.prepare(
-        "insert into settings (user_id, notifications_enabled, theme, timezone) "
-        "values (?, ?, ?, ?) "
+        "insert into settings (user_id, notifications_enabled, theme, timezone, "
+        "always_on_top, minimize_to_tray, notify_minutes_before) "
+        "values (?, ?, ?, ?, ?, ?, ?) "
         "on conflict (user_id) do update set "
         "notifications_enabled = excluded.notifications_enabled, "
         "theme = excluded.theme, "
         "timezone = excluded.timezone, "
+        "always_on_top = excluded.always_on_top, "
+        "minimize_to_tray = excluded.minimize_to_tray, "
+        "notify_minutes_before = excluded.notify_minutes_before, "
         "updated_at = now()");
     upsert.addBindValue(userId);
     upsert.addBindValue(settings.notificationsEnabled);
     upsert.addBindValue(settings.theme);
     upsert.addBindValue(settings.timezone);
-    return upsert.exec();
+    upsert.addBindValue(settings.alwaysOnTop);
+    upsert.addBindValue(settings.minimizeToTray);
+    upsert.addBindValue(settings.notifyMinutesBefore);
+
+    if (!upsert.exec())
+        return false;
+
+    AuditService::log(userId, "account.settings_change", "user", userId,
+                      settings.theme + "/" + settings.timezone
+                          + (settings.alwaysOnTop ? " ontop" : "")
+                          + (settings.minimizeToTray ? " tray" : ""));
+    return true;
 }
 
 void SettingsService::loadCurrent(qint64 userId)

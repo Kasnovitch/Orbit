@@ -6,6 +6,7 @@
 #include "src/data/auth/SessionWatch.hpp"
 #include "src/data/database/Database.hpp"
 #include "src/infrastructure/config/AppConfig.hpp"
+#include "src/services/notifications/NotificationService.hpp"
 #include "src/services/projects/ProjectService.hpp"
 #include "src/services/settings/SettingsService.hpp"
 #include "src/ui/auth/LoginScreen.hpp"
@@ -38,6 +39,7 @@ int Application::run(int argc, char** argv)
     auth.seedDefaultUser();
 
     SessionWatch watch(auth);
+    auto& notifications = NotificationService::instance();
 
     LoginScreen login;
     login.setDatabaseStatus(dbStatus);
@@ -49,6 +51,7 @@ int Application::run(int argc, char** argv)
 
     auto leaveApp = [&](const QString& note) {
         watch.stop();
+        notifications.stop();
         if (currentUser.sessionId > 0)
             auth.logout(currentUser);
         currentUser = AuthUser();
@@ -61,6 +64,13 @@ int Application::run(int argc, char** argv)
         login.clearPassword();
         login.showNote(note);
     };
+
+    // tray menu "Quit" leaves the app entirely (vs logout -> login screen)
+    QObject::connect(&notifications, &NotificationService::quitRequested,
+                     &app, [&]() {
+        leaveApp("quit from the tray.");
+        app.quit();
+    });
 
     auto enterApp = [&](const AuthUser& user) {
         currentUser = user;
@@ -77,6 +87,11 @@ int Application::run(int argc, char** argv)
         mainWindow->show();
         login.close();
         watch.start(user.sessionId);
+
+        // tray + desktop notifications (day 10); the tray's restore
+        // action brings the window back from minimize-to-tray
+        notifications.attachWindow(mainWindow);
+        notifications.start(user.id);
 
         // logged out from the sidebar button
         QObject::connect(mainWindow, &MainWindow::logoutRequested, &watch, [&]() {

@@ -8,6 +8,7 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QSpinBox;
 class QVBoxLayout;
 
 class SettingsScreen : public QWidget
@@ -15,6 +16,11 @@ class SettingsScreen : public QWidget
     Q_OBJECT
 public:
     explicit SettingsScreen(const AuthUser& user, QWidget* parent = nullptr);
+
+signals:
+    // fired after a successful save so the main window can re-apply
+    // window flags (always on top) without polling
+    void settingsChanged();
 
 private:
     void load();
@@ -30,6 +36,9 @@ private:
     QComboBox* m_themeBox = nullptr;
     QComboBox* m_timezoneBox = nullptr;
     QCheckBox* m_notifications = nullptr;
+    QSpinBox* m_notifyLead = nullptr;
+    QCheckBox* m_alwaysOnTop = nullptr;
+    QCheckBox* m_minimizeToTray = nullptr;
     QLineEdit* m_currentPassword = nullptr;
     QLineEdit* m_newPassword = nullptr;
     QLineEdit* m_confirmPassword = nullptr;

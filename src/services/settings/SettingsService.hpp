@@ -8,6 +8,9 @@ struct SettingsRow {
     bool notificationsEnabled = true;
     QString theme = "dark";     // dark / light / system
     QString timezone = "UTC";   // UTC, UTC+2, UTC-5 ...
+    bool alwaysOnTop = false;   // pin the window above others
+    bool minimizeToTray = false; // closing hides to the tray instead
+    int notifyMinutesBefore = 15; // countdown reminder lead time
 };
 
 // day 7: the settings page reads and writes the settings table. the row

@@ -43,15 +43,20 @@ QLabel#loginTitle {
 }
 
 QLabel#sidebarBrand {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
-    padding-bottom: 16px;
+    padding-left: 4px;
+}
+
+QFrame#sidebarSeparator {
+    background-color: #d8dee7;
+    border: none;
 }
 
 QLabel#sidebarUser {
     font-size: 12px;
-    padding-top: 12px;
-    color: #3c4657;
+    color: #5b6472;
+    padding-left: 4px;
 }
 
 QLabel#dashboardGreeting {
@@ -164,6 +169,30 @@ QPushButton#rowButton {
 QPushButton#rowButton:hover {
     background-color: #e7ebf1;
     color: #121722;
+}
+
+QSpinBox {
+    background-color: #ffffff;
+    border: 1px solid #cfd6e0;
+    border-radius: 8px;
+    color: #1d2330;
+    padding: 8px 12px;
+    min-width: 160px;
+}
+
+QSpinBox:focus {
+    border-color: #0d9488;
+}
+
+QSpinBox::up-button, QSpinBox::down-button {
+    width: 18px;
+    border: none;
+    background: transparent;
+}
+
+QSpinBox::up-arrow, QSpinBox::down-arrow {
+    width: 10px;
+    height: 10px;
 }
 
 QLineEdit, QDateTimeEdit, QPlainTextEdit {

@@ -43,14 +43,20 @@ QLabel#loginTitle {
 }
 
 QLabel#sidebarBrand {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
-    padding-bottom: 16px;
+    padding-left: 4px;
+}
+
+QFrame#sidebarSeparator {
+    background-color: #323643;
+    border: none;
 }
 
 QLabel#sidebarUser {
     font-size: 12px;
-    padding-top: 12px;
+    color: #9aa1b2;
+    padding-left: 4px;
 }
 
 QLabel#dashboardGreeting {
@@ -85,6 +91,30 @@ QPushButton#logoutButton {
 QPushButton#logoutButton:hover {
     background-color: #2b2f39;
     color: #ff8f8f;
+}
+
+QSpinBox {
+    background-color: #24272f;
+    border: 1px solid #3a3f4d;
+    border-radius: 8px;
+    color: #e8eaf0;
+    padding: 8px 12px;
+    min-width: 160px;
+}
+
+QSpinBox:focus {
+    border-color: #14b8a6;
+}
+
+QSpinBox::up-button, QSpinBox::down-button {
+    width: 18px;
+    border: none;
+    background: transparent;
+}
+
+QSpinBox::up-arrow, QSpinBox::down-arrow {
+    width: 10px;
+    height: 10px;
 }
 
 QFrame#statTile, QFrame#panel {

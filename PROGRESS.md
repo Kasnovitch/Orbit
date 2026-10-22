@@ -314,3 +314,42 @@ open), day 3 (projects crud + permissions), day 9 (audit + admin).
 - `to-dolist.md` keep or delete? still unanswered from day 1
 - timezone: whole hours only, or half-hour zones now?
 - notifications toggle stored but nothing fires it - wire later or drop?
+  (answered day 10: wired)
+
+## day 10 - menu polish + settings mvp (22 oct 2026)
+
+### done
+
+- sidebar rebuilt as a single aligned rail: consistent 38px nav buttons
+  on one left edge, brand/nav/footer in fixed sections, separator line
+  above the signed-in user block, logout button the same height as the
+  nav buttons
+- settings page rebuilt on one shared form shape (same label column,
+  field width, row spacing) so every panel lines up down the page;
+  panels: Appearance, Notifications, Window, Account (+ admin sections)
+- notifications are real now: `NotificationService` owns a system tray
+  icon (teal O, drawn at runtime) with Open/Quit menu. a 60s timer
+  pops balloons for countdowns due within the lead time and tasks
+  due/overdue; each item notifies once per due time. the old "toggle
+  stored but nothing fires" gap is closed
+- window settings: "always on top" (pin above other windows, re-applied
+  live without restart) and "minimize to tray" (closing hides to the
+  tray, restore from the icon or tray menu; Quit there exits the app)
+- `settings` table gained `always_on_top`, `minimize_to_tray`,
+  `notify_minutes_before` - additive `ensureColumn` migration (checks
+  information_schema, alter table add column), fresh installs get them
+  in the day 7 ddl, existing databases upgrade in place
+- settings saves are audited (`account.settings_change`) like the other
+  account changes
+
+### decisions
+
+- tray icon appears only while logged in and only when notifications or
+  minimize-to-tray is on - otherwise Orbit stays out of the tray
+- reminder lead time is a spinbox 1-240 minutes, default 15
+- notifications dedupe per run (kind:id:due_time key, capped at 400
+  keys) - restart the app to re-arm reminders
+- minimize-to-tray applies on close only when the tray is actually
+  visible; if the tray can't show, close quits as before
+- always-on-top uses the native window flag; toggling it re-shows the
+  window because changing flags hides it on windows

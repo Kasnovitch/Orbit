@@ -6,6 +6,7 @@
 #include "src/data/auth/AuthService.hpp"
 
 class Dashboard;
+class QCloseEvent;
 class QLabel;
 class ProjectSelector;
 class QPushButton;
@@ -22,8 +23,14 @@ public:
 signals:
     void logoutRequested();
 
+protected:
+    // day 10: with "minimize to tray" on, closing hides to the tray
+    // instead of quitting
+    void closeEvent(QCloseEvent* event) override;
+
 private:
     void navigate(int index);
+    void applyWindowFlags();
     QWidget* buildPlaceholderPage(const QString& heading, const QString& hint);
 
     AuthUser m_user;

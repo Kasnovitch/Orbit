@@ -196,7 +196,9 @@ create table project_files (
 )" },
 };
 
-// day 7: per-user preferences, one row per user
+// day 7: per-user preferences, one row per user. day 10 adds the
+// window/notifications columns for fresh installs; ensureColumns below
+// upgrades databases that already have the table
 const Table day7Tables[] = {
     { "settings", R"(
 create table settings (
@@ -204,6 +206,9 @@ create table settings (
     notifications_enabled boolean not null default true,
     theme text not null default 'dark',
     timezone text not null default 'UTC',
+    always_on_top boolean not null default false,
+    minimize_to_tray boolean not null default false,
+    notify_minutes_before integer not null default 15,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 )
@@ -259,6 +264,33 @@ const char* day6Indexes[] = {
     "create index project_files_project_id_idx on project_files (project_id)",
 };
 
+// additive columns for tables that already exist in the wild - existing
+// databases only ever get new columns, never rewritten tables
+bool ensureColumn(const char* table, const char* column,
+                  const char* ddl, QString& status)
+{
+    QSqlQuery exists;
+    exists.prepare(
+        "select 1 from information_schema.columns "
+        "where table_schema = 'public' and table_name = ? and column_name = ?");
+    exists.addBindValue(QString::fromLatin1(table));
+    exists.addBindValue(QString::fromLatin1(column));
+
+    if (!exists.exec()) {
+        status = "database: " + exists.lastError().text();
+        return false;
+    }
+    if (exists.next())
+        return true; // already there
+
+    QSqlQuery alter;
+    if (!alter.exec(QString::fromLatin1(ddl))) {
+        status = "database: " + alter.lastError().text();
+        return false;
+    }
+    return true;
+}
+
 }
 
 bool Database::open(const DatabaseConfig& cfg)
@@ -307,7 +339,16 @@ bool Database::ensureTables()
         || !applyIndexes(day3Indexes, std::size(day3Indexes), m_status)
         || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
         || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status)
-        || !applyIndexes(day9Indexes, std::size(day9Indexes), m_status))
+        || !applyIndexes(day9Indexes, std::size(day9Indexes), m_status)
+        || !ensureColumn("settings", "always_on_top",
+                         "alter table settings add column always_on_top "
+                         "boolean not null default false", m_status)
+        || !ensureColumn("settings", "minimize_to_tray",
+                         "alter table settings add column minimize_to_tray "
+                         "boolean not null default false", m_status)
+        || !ensureColumn("settings", "notify_minutes_before",
+                         "alter table settings add column notify_minutes_before "
+                         "integer not null default 15", m_status))
         return false;
 
     if (created > 0)
