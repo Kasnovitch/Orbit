@@ -10,8 +10,14 @@ class ProjectSelector : public QWidget
 public:
     explicit ProjectSelector(QWidget* parent = nullptr);
 
+    // fills the combo from the database (active projects), keeping the
+    // current selection where possible
+    void reload();
+
+    qint64 currentProjectId() const;
+
 signals:
-    void projectChanged(const QString& projectName);
+    void projectChanged(qint64 projectId);
 
 private:
     QComboBox* m_combo = nullptr;

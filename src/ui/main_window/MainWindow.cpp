@@ -12,8 +12,9 @@
 #include "src/ui/dashboard/project_selector/ProjectSelector.hpp"
 #include "src/ui/settings/SettingsScreen.hpp"
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
     : QMainWindow(parent)
+    , m_user(user)
 {
     setWindowTitle("Orbit");
     resize(1280, 800);
@@ -74,9 +75,10 @@ MainWindow::MainWindow(QWidget* parent)
     topBar->addWidget(m_projectSelector);
 
     m_pages = new QStackedWidget(content);
-    m_pages->addWidget(new Dashboard(m_pages));
+    m_dashboard = new Dashboard(m_user.id, m_pages);
+    m_pages->addWidget(m_dashboard);
     m_pages->addWidget(buildPlaceholderPage(
-        "Tasks", "Tasks arrive on day 4 \u2014 list, filters and real counts."));
+        "Tasks", "The task list lives on the dashboard for now, tied to the selected project."));
     m_pages->addWidget(buildPlaceholderPage(
         "Countdowns", "Countdowns arrive on day 5 \u2014 live timers and progress bars."));
     m_pages->addWidget(buildPlaceholderPage(
@@ -92,8 +94,12 @@ MainWindow::MainWindow(QWidget* parent)
     root->addWidget(content, 1);
     setCentralWidget(central);
 
-    m_navButtons.first()->setChecked(true);
+    // load the projects now that the dashboard is listening
+    connect(m_projectSelector, &ProjectSelector::projectChanged,
+            m_dashboard, &Dashboard::setProject);
+    m_projectSelector->reload();
 
+    m_navButtons.first()->setChecked(true);
     connect(navGroup, &QButtonGroup::idClicked, this, &MainWindow::navigate);
 }
 

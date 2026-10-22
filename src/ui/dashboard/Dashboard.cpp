@@ -4,14 +4,16 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 
+#include "src/services/tasks/TaskService.hpp"
 #include "src/ui/dashboard/countdown_panel/CountdownPanel.hpp"
 #include "src/ui/dashboard/files_panel/FilesPanel.hpp"
 #include "src/ui/dashboard/links_panel/LinksPanel.hpp"
 #include "src/ui/dashboard/task_panel/TaskPanel.hpp"
 #include "src/ui/widgets/Widgets.hpp"
 
-Dashboard::Dashboard(QWidget* parent)
+Dashboard::Dashboard(qint64 userId, QWidget* parent)
     : QWidget(parent)
+    , m_userId(userId)
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 24, 24, 24);
@@ -19,11 +21,16 @@ Dashboard::Dashboard(QWidget* parent)
 
     auto* tiles = new QHBoxLayout();
     tiles->setSpacing(16);
-    tiles->addWidget(new StatTile("Active Tasks", this));
-    tiles->addWidget(new StatTile("Completed Tasks", this));
-    tiles->addWidget(new StatTile("Upcoming Deadlines", this));
-    tiles->addWidget(new StatTile("Active Countdowns", this));
-    tiles->addWidget(new StatTile("Completed Countdowns", this));
+    m_activeTasks = new StatTile("Active Tasks", this);
+    m_completedTasks = new StatTile("Completed Tasks", this);
+    m_upcomingDeadlines = new StatTile("Upcoming Deadlines", this);
+    m_activeCountdowns = new StatTile("Active Countdowns", this);
+    m_completedCountdowns = new StatTile("Completed Countdowns", this);
+    tiles->addWidget(m_activeTasks);
+    tiles->addWidget(m_completedTasks);
+    tiles->addWidget(m_upcomingDeadlines);
+    tiles->addWidget(m_activeCountdowns);
+    tiles->addWidget(m_completedCountdowns);
     tiles->addStretch();
 
     auto* splitter = new QSplitter(Qt::Horizontal, this);
@@ -32,8 +39,10 @@ Dashboard::Dashboard(QWidget* parent)
     auto* leftLayout = new QVBoxLayout(left);
     leftLayout->setContentsMargins(0, 0, 0, 0);
     leftLayout->setSpacing(16);
-    leftLayout->addWidget(new CountdownPanel(left), 3);
-    leftLayout->addWidget(new TaskPanel(left), 2);
+    m_countdownPanel = new CountdownPanel(left);
+    m_taskPanel = new TaskPanel(m_userId, left);
+    leftLayout->addWidget(m_countdownPanel, 3);
+    leftLayout->addWidget(m_taskPanel, 2);
 
     auto* right = new QWidget(this);
     auto* rightLayout = new QVBoxLayout(right);
@@ -49,4 +58,23 @@ Dashboard::Dashboard(QWidget* parent)
 
     layout->addLayout(tiles);
     layout->addWidget(splitter, 1);
+
+    connect(m_taskPanel, &TaskPanel::dataChanged, this, &Dashboard::refreshStats);
+}
+
+void Dashboard::setProject(qint64 projectId)
+{
+    if (m_projectId == projectId)
+        return;
+    m_projectId = projectId;
+    m_taskPanel->setProject(projectId);
+    refreshStats();
+}
+
+void Dashboard::refreshStats()
+{
+    TaskService tasks;
+    m_activeTasks->setValue(QString::number(tasks.countActive(m_projectId)));
+    m_completedTasks->setValue(QString::number(tasks.countCompleted(m_projectId)));
+    m_upcomingDeadlines->setValue(QString::number(tasks.countDueSoon(m_projectId, 7)));
 }

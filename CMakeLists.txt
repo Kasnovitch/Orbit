@@ -25,6 +25,8 @@ qt_add_executable(Orbit WIN32
     src/data/database/Database.cpp
     src/data/auth/AuthService.cpp
     src/data/auth/SessionWatch.cpp
+    src/services/projects/ProjectService.cpp
+    src/services/tasks/TaskService.cpp
     src/ui/resources/Resources.qrc
 )
 

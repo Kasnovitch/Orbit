@@ -201,3 +201,54 @@ QScrollBar::handle:vertical {
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
 }
+
+/* rows inside the dashboard panels (tasks, countdowns, links, files) */
+QFrame#itemRow {
+    background-color: #24272f;
+    border: 1px solid #323643;
+    border-radius: 8px;
+}
+
+QLabel#rowTitle {
+    color: #e8eaf0;
+    font-size: 13px;
+}
+
+QLabel#rowDetail {
+    color: #9aa1b2;
+    font-size: 11px;
+}
+
+QPushButton#rowButton {
+    background-color: transparent;
+    border: 1px solid #3a3f4d;
+    border-radius: 6px;
+    color: #c3c9d6;
+    padding: 4px 10px;
+}
+
+QPushButton#rowButton:hover {
+    background-color: #2b2f39;
+    color: #e8eaf0;
+}
+
+QLineEdit#panelInput {
+    background-color: #24272f;
+    border: 1px solid #3a3f4d;
+    border-radius: 8px;
+    color: #e8eaf0;
+    padding: 8px 12px;
+}
+
+QLineEdit#panelInput:focus {
+    border-color: #14b8a6;
+}
+
+QComboBox#rowCombo {
+    min-width: 110px;
+    padding: 4px 8px;
+}
+
+QScrollArea#panelScroll, QScrollArea#panelScroll > QWidget > QWidget {
+    background: transparent;
+}
