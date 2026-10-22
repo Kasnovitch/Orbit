@@ -28,6 +28,8 @@ qt_add_executable(Orbit WIN32
     src/services/projects/ProjectService.cpp
     src/services/tasks/TaskService.cpp
     src/services/countdowns/CountdownService.cpp
+    src/services/links/LinkService.cpp
+    src/services/files/FileService.cpp
     src/ui/resources/Resources.qrc
 )
 

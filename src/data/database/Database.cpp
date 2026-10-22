@@ -135,6 +135,34 @@ create table countdowns (
 )" },
 };
 
+// day 6: links + files. both must belong to a project
+const Table day6Tables[] = {
+    { "project_links", R"(
+create table project_links (
+    id bigserial primary key,
+    project_id bigint not null references projects (id) on delete cascade,
+    title text not null,
+    url text not null,
+    created_by bigint references users (id) on delete set null,
+    created_date timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+)
+)" },
+    { "project_files", R"(
+create table project_files (
+    id bigserial primary key,
+    project_id bigint not null references projects (id) on delete cascade,
+    filename text not null,
+    storage_key text not null,
+    mime_type text default '',
+    size_bytes bigint not null default 0,
+    uploaded_by bigint references users (id) on delete set null,
+    created_date timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+)
+)" },
+};
+
 const char* day1Indexes[] = {
     "create index projects_created_by_idx on projects (created_by)",
     "create index tasks_project_id_idx on tasks (project_id)",
@@ -147,6 +175,11 @@ const char* day5Indexes[] = {
     "create index countdowns_project_id_idx on countdowns (project_id)",
     "create index countdowns_due_time_idx on countdowns (due_time)",
     "create index countdowns_created_by_idx on countdowns (created_by)",
+};
+
+const char* day6Indexes[] = {
+    "create index project_links_project_id_idx on project_links (project_id)",
+    "create index project_files_project_id_idx on project_files (project_id)",
 };
 
 }
@@ -187,8 +220,10 @@ bool Database::ensureTables()
 
     if (!applyTables(day1Tables, std::size(day1Tables), created, m_status)
         || !applyTables(day5Tables, std::size(day5Tables), created, m_status)
+        || !applyTables(day6Tables, std::size(day6Tables), created, m_status)
         || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
-        || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status))
+        || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
+        || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status))
         return false;
 
     if (created > 0)

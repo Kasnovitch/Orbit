@@ -49,8 +49,10 @@ Dashboard::Dashboard(qint64 userId, QWidget* parent)
     auto* rightLayout = new QVBoxLayout(right);
     rightLayout->setContentsMargins(0, 0, 0, 0);
     rightLayout->setSpacing(16);
-    rightLayout->addWidget(new LinksPanel(right), 1);
-    rightLayout->addWidget(new FilesPanel(right), 1);
+    m_linksPanel = new LinksPanel(m_userId, right);
+    m_filesPanel = new FilesPanel(m_userId, right);
+    rightLayout->addWidget(m_linksPanel, 1);
+    rightLayout->addWidget(m_filesPanel, 1);
 
     splitter->addWidget(left);
     splitter->addWidget(right);
@@ -71,6 +73,8 @@ void Dashboard::setProject(qint64 projectId)
     m_projectId = projectId;
     m_taskPanel->setProject(projectId);
     m_countdownPanel->setProject(projectId);
+    m_linksPanel->setProject(projectId);
+    m_filesPanel->setProject(projectId);
     refreshStats();
 }
 

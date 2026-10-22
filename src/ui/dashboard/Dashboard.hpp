@@ -3,6 +3,8 @@
 #include <QWidget>
 
 class CountdownPanel;
+class FilesPanel;
+class LinksPanel;
 class StatTile;
 class TaskPanel;
 
@@ -27,4 +29,6 @@ private:
     StatTile* m_completedCountdowns = nullptr;
     CountdownPanel* m_countdownPanel = nullptr;
     TaskPanel* m_taskPanel = nullptr;
+    LinksPanel* m_linksPanel = nullptr;
+    FilesPanel* m_filesPanel = nullptr;
 };
