@@ -213,3 +213,104 @@ open), day 3 (projects crud + permissions), day 9 (audit + admin).
 - timezone: ok with whole hours only, or add half-hour zones now?
 - notifications toggle is stored but nothing fires it yet (no desktop
   notification code) - wire real notifications later or drop the toggle?
+
+## day 2 - real login (22 oct 2026)
+
+### done
+
+- libsodium 1.0.22 vendored under `third_party/libsodium/` (official
+  mingw static build + a small compat shim for `memset_explicit`, which
+  older mingw-w64 CRTs lack). linked into the Orbit target only, not the
+  console
+- passwords: argon2id via `crypto_pwhash_str` (interactive params: ops 2,
+  64 MB). the old pbkdf2 rows still verify (dual-verify on the `$argon2`
+  prefix) and upgrade to argon2 the next time the password is changed
+- `sessions` table embedded (token hash only, never the raw token; 30 min
+  idle + 7 day absolute expiry, revoked_at, unique token_hash + indexes)
+- `login()` inserts the session row, updates `last_login_at`, cleans up
+  expired sessions on the way through. `restoreSession()` re-reads the
+  saved token, validates it against the table, slides the idle window
+- remember-me: encrypted local file (libsodium secretbox), not QtKeychain
+  - the question was dodged three times and "do it all" was the answer,
+  so the simplest self-contained option went in (see decisions)
+- `SessionWatch` is live: 30 min idle or 7 day absolute, whichever comes
+  first, then back to the login screen with "session expired"
+- logout button wired; logout revokes the session row and wipes the
+  remember file; next login starts clean
+- register mode on the login screen is real: creates a `user`-role
+  account, argon2id-hashed
+- day 1's pass-through login and the bootstrap identity are gone - you
+  either restore a saved session or log in for real. the temporary
+  bootstrap admin seeding stays (`seedDefaultUser`) so a fresh database
+  still comes up with admin/admin123
+
+### decisions
+
+- remember-me = encrypted file at `<AppData>/Orbit/remember.bin`, key
+  derived from username + windows MachineGuid via argon2id. protects
+  against the file being copied to another machine, not against someone
+  already on this one. QtKeychain question closed as "encrypted file"
+- argon2id interactive parameters - noticeable but not annoying at the
+  login prompt; bump to moderate if the machine is fast enough
+- pbkdf2 kept only as a verify fallback for the seeded admin row
+
+## day 3 - projects crud + permissions (22 oct 2026)
+
+### done
+
+- `permissions` table embedded (user_id + project_id unique, can_write).
+  owner (`created_by`) and admins never need a row - they bypass the table
+- `PermissionService`: canModify (admin > owner > write grant), grant/revoke
+  ready for a future share dialog
+- `ProjectService` CRUD: create/update/archive/unarchive/delete, every
+  mutation permission-checked in the service (never the UI). delete
+  cascades (confirmed in the prompt before it runs)
+- Projects page (sidebar item 3) is real now: add row, project list with
+  owner + status, Edit / Archive-Restore / Delete buttons that hide when
+  you can't touch the project. any change refreshes the top-bar selector
+- the day 4-8 bootstrap comment about projects being temporary is done -
+  `ensureGeneralProject` now just makes sure the selector never starts
+  empty
+
+### decisions
+
+- permission model: admin/owner bypass + explicit write grants. read is
+  implicit for everyone who can see the project (visibility column exists
+  but is unused; sharing UI is a later thing)
+- cache keys are still project-scoped, not user-scoped - fine while one
+  machine is one user; revisit when sharing lands
+
+## day 9 - audit + admin (22 oct 2026)
+
+### done
+
+- `audit_logs` table embedded (user_id nullable, action, entity_type,
+  entity_id, metadata text, created_at + indexes)
+- `AuditService`: fire-and-forget insert (audit never breaks the action
+  it records), `recent(limit)` for the admin view. no secrets ever go
+  into metadata
+- wired into: project create/update/archive/unarchive/delete, permission
+  grant/revoke, account register, password change, enable/disable, role
+  change
+- Settings page, admin only: Users panel (username, role combo, active
+  checkbox, last login) - enable/disable kicks the target's sessions,
+  you can't disable yourself (box is greyed out); Recent activity panel
+  showing the last 20 audit entries
+- `AuthService` gained listUsers / setUserActive / setUserRole
+
+### decisions
+
+- audit metadata is plain text, not jsonb - the entries are single facts
+  (project name, role name, read/write), jsonb can wait
+- disabling a user revokes their sessions, same rule as a password change
+- the users list and audit log are read-only refresh-on-change; no
+  pagination yet (limit 20 for the log, all users in the list)
+
+### open questions (days 2-9)
+
+- countdown Active/Paused status column (screenshot showed badges, spec
+  has no status) - add or leave computed-from-due_time?
+- cascade vs restrict when a project is deleted - I went cascade
+- `to-dolist.md` keep or delete? still unanswered from day 1
+- timezone: whole hours only, or half-hour zones now?
+- notifications toggle stored but nothing fires it - wire later or drop?
