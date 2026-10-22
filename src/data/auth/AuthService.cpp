@@ -1,5 +1,7 @@
 #include "src/data/auth/AuthService.hpp"
 
+#include <sodium.h>
+
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QPasswordDigestor>
@@ -10,8 +12,18 @@
 #include <QVariant>
 
 namespace {
+
+// argon2id via libsodium - interactive parameters (ops 2, 64 MB), the
+// standard choice for a login prompt
+void ensureSodium()
+{
+    static const int ready = sodium_init();
+    Q_UNUSED(ready)
+}
+
 const int pbkdf2Iterations = 100000;
 const char* hashPrefix = "pbkdf2-sha256";
+
 }
 
 bool AuthService::seedDefaultUser()
@@ -300,23 +312,33 @@ bool AuthService::changePassword(qint64 userId, const QString& currentPassword,
 
 QString AuthService::hashPassword(const QString& password)
 {
-    const QByteArray salt = randomBytes(16);
-    const QByteArray derived = QPasswordDigestor::deriveKeyPbkdf2(
-        QCryptographicHash::Sha256,
-        password.toUtf8(),
-        salt,
-        pbkdf2Iterations,
-        32);
+    ensureSodium();
 
-    return QString("%1$%2$%3$%4")
-        .arg(hashPrefix)
-        .arg(pbkdf2Iterations)
-        .arg(QString::fromLatin1(salt.toHex()))
-        .arg(QString::fromLatin1(derived.toHex()));
+    // crypto_pwhash_str packs the salt and parameters into the string
+    QByteArray out(crypto_pwhash_STRBYTES, '\0');
+    const QByteArray pass = password.toUtf8();
+    if (crypto_pwhash_str(out.data(), pass.constData(), pass.size(),
+                          crypto_pwhash_OPSLIMIT_INTERACTIVE,
+                          crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
+        return QString();
+
+    return QString::fromLatin1(out.constData());
 }
 
 bool AuthService::verifyPassword(const QString& password, const QString& stored)
 {
+    const QByteArray pass = password.toUtf8();
+
+    // rows hashed on day 2 and later
+    if (stored.startsWith("$argon2")) {
+        ensureSodium();
+        const QByteArray storedBytes = stored.toLatin1();
+        return crypto_pwhash_str_verify(storedBytes.constData(),
+                                        pass.constData(), pass.size()) == 0;
+    }
+
+    // rows seeded with the old pbkdf2 scheme still verify; they turn into
+    // argon2 strings the next time the password is changed
     const QStringList parts = stored.split('$');
     if (parts.size() != 4 || parts[0] != hashPrefix)
         return false;
@@ -329,7 +351,7 @@ bool AuthService::verifyPassword(const QString& password, const QString& stored)
 
     const QByteArray derived = QPasswordDigestor::deriveKeyPbkdf2(
         QCryptographicHash::Sha256,
-        password.toUtf8(),
+        pass,
         salt,
         iterations,
         expected.size());
@@ -355,8 +377,9 @@ void AuthService::forgetToken()
 
 QByteArray AuthService::randomBytes(int count)
 {
-    QByteArray bytes(count, Qt::Uninitialized);
-    QRandomGenerator::system()->generate(bytes.begin(), bytes.end());
+    ensureSodium();
+    QByteArray bytes(count, '\0');
+    randombytes_buf(bytes.data(), size_t(count));
     return bytes;
 }
 

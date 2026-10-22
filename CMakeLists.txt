@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Orbit LANGUAGES CXX)
+project(Orbit LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,6 +9,7 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Network)
 
 qt_add_executable(Orbit WIN32
+    third_party/libsodium/compat_mingw.c
     src/app/bootstrap/Main.cpp
     src/app/Application.cpp
     src/ui/auth/LoginScreen.cpp
@@ -36,9 +37,12 @@ qt_add_executable(Orbit WIN32
     src/ui/resources/Resources.qrc
 )
 
-target_include_directories(Orbit PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(Orbit PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsodium/include)
 
-target_link_libraries(Orbit PRIVATE Qt6::Widgets Qt6::Sql Qt6::Network)
+target_link_libraries(Orbit PRIVATE Qt6::Widgets Qt6::Sql Qt6::Network
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libsodium/lib/libsodium.a bcrypt)
 
 # console shell: banner + "request users" style commands, same postgres db
 qt_add_executable(OrbitConsole
