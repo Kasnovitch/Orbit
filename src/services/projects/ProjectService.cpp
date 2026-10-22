@@ -6,6 +6,7 @@
 
 #include "src/cache/Cache.hpp"
 #include "src/data/auth/AuthService.hpp"
+#include "src/services/audit/AuditService.hpp"
 #include "src/services/permissions/PermissionService.hpp"
 
 namespace {
@@ -47,6 +48,8 @@ bool setArchiveState(qint64 projectId, const AuthUser& by, bool archived,
     }
 
     Cache::instance().invalidatePrefix("projects.");
+    AuditService::log(by.id, archived ? "project.archive" : "project.unarchive",
+                      "project", projectId);
     return true;
 }
 
@@ -126,8 +129,10 @@ qint64 ProjectService::create(const QString& name, const QString& description,
         return 0;
     }
 
+    const qint64 id = insert.value(0).toLongLong();
     Cache::instance().invalidatePrefix("projects.");
-    return insert.value(0).toLongLong();
+    AuditService::log(createdBy, "project.create", "project", id, cleanName);
+    return id;
 }
 
 bool ProjectService::update(qint64 projectId, const QString& name,
@@ -158,6 +163,7 @@ bool ProjectService::update(qint64 projectId, const QString& name,
     }
 
     Cache::instance().invalidatePrefix("projects.");
+    AuditService::log(by.id, "project.update", "project", projectId, cleanName);
     return true;
 }
 
@@ -187,6 +193,7 @@ bool ProjectService::remove(qint64 projectId, const AuthUser& by, QString* error
     }
 
     Cache::instance().invalidatePrefix("projects.");
+    AuditService::log(by.id, "project.delete", "project", projectId);
     return true;
 }
 

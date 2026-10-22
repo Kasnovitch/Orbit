@@ -4,6 +4,7 @@
 #include <QVariant>
 
 #include "src/data/auth/AuthService.hpp"
+#include "src/services/audit/AuditService.hpp"
 
 bool PermissionService::canModify(const AuthUser& user, qint64 projectId)
 {
@@ -45,7 +46,12 @@ bool PermissionService::grant(qint64 userId, qint64 projectId, bool canWrite)
     query.addBindValue(userId);
     query.addBindValue(projectId);
     query.addBindValue(canWrite);
-    return query.exec();
+    if (!query.exec())
+        return false;
+
+    AuditService::log(userId, "permission.grant", "project", projectId,
+                      canWrite ? "write" : "read");
+    return true;
 }
 
 bool PermissionService::revoke(qint64 userId, qint64 projectId)
@@ -58,5 +64,9 @@ bool PermissionService::revoke(qint64 userId, qint64 projectId)
         "delete from permissions where user_id = ? and project_id = ?");
     query.addBindValue(userId);
     query.addBindValue(projectId);
-    return query.exec();
+    if (!query.exec())
+        return false;
+
+    AuditService::log(userId, "permission.revoke", "project", projectId);
+    return true;
 }

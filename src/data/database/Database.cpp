@@ -210,6 +210,26 @@ create table settings (
 )" },
 };
 
+// day 9: audit trail for account and project changes
+const Table day9Tables[] = {
+    { "audit_logs", R"(
+create table audit_logs (
+    id bigserial primary key,
+    user_id bigint references users (id) on delete set null,
+    action text not null,
+    entity_type text default '',
+    entity_id bigint,
+    metadata text default '',
+    created_at timestamptz not null default now()
+)
+)" },
+};
+
+const char* day9Indexes[] = {
+    "create index audit_logs_user_id_idx on audit_logs (user_id)",
+    "create index audit_logs_created_at_idx on audit_logs (created_at)",
+};
+
 const char* day1Indexes[] = {
     "create index projects_created_by_idx on projects (created_by)",
     "create index tasks_project_id_idx on tasks (project_id)",
@@ -281,11 +301,13 @@ bool Database::ensureTables()
         || !applyTables(day5Tables, std::size(day5Tables), created, m_status)
         || !applyTables(day6Tables, std::size(day6Tables), created, m_status)
         || !applyTables(day7Tables, std::size(day7Tables), created, m_status)
+        || !applyTables(day9Tables, std::size(day9Tables), created, m_status)
         || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
         || !applyIndexes(day2Indexes, std::size(day2Indexes), m_status)
         || !applyIndexes(day3Indexes, std::size(day3Indexes), m_status)
         || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
-        || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status))
+        || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status)
+        || !applyIndexes(day9Indexes, std::size(day9Indexes), m_status))
         return false;
 
     if (created > 0)

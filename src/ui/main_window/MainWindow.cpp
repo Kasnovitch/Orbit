@@ -86,7 +86,7 @@ MainWindow::MainWindow(const AuthUser& user, QWidget* parent)
     m_pages->addWidget(projectsPage);
     m_pages->addWidget(buildPlaceholderPage(
         "Teams", "Teams stay a placeholder until collaboration is needed."));
-    m_pages->addWidget(new SettingsScreen(m_user.id, m_pages));
+    m_pages->addWidget(new SettingsScreen(m_user, m_pages));
 
     contentLayout->addLayout(topBar);
     contentLayout->addWidget(m_pages, 1);

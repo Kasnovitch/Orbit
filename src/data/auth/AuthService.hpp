@@ -1,6 +1,8 @@
 #pragma once
 
+#include <QDateTime>
 #include <QString>
+#include <QVector>
 
 // the logged-in user for this run of the app
 struct AuthUser {
@@ -10,6 +12,16 @@ struct AuthUser {
     QString displayName;
     QString role;
     QString token; // raw session token, we only keep the hash in the db
+};
+
+// one row for the admin users list
+struct UserRow {
+    qint64 id = 0;
+    QString username;
+    QString role;
+    QString displayName;
+    bool active = true;
+    QDateTime lastLoginAt;
 };
 
 class AuthService
@@ -48,6 +60,12 @@ public:
 
     // revokes the session row for this token
     void logout(const AuthUser& user);
+
+    // day 9: admin user management. enable/disable kicks the target's
+    // sessions; you can't disable yourself
+    QVector<UserRow> listUsers();
+    bool setUserActive(qint64 targetId, bool active, qint64 actorId, QString* error);
+    bool setUserRole(qint64 targetId, const QString& role, qint64 actorId, QString* error);
 
 private:
     QString hashPassword(const QString& password);

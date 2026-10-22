@@ -15,6 +15,8 @@
 #include <QSysInfo>
 #include <QVariant>
 
+#include "src/services/audit/AuditService.hpp"
+
 namespace {
 
 // argon2id via libsodium - interactive parameters (ops 2, 64 MB), the
@@ -128,18 +130,20 @@ bool AuthService::registerUser(const QString& username, const QString& password,
     QSqlQuery insert;
     insert.prepare(
         "insert into users (username, password_hash, role, display_name) "
-        "values (?, ?, ?, ?)");
+        "values (?, ?, ?, ?) returning id");
     insert.addBindValue(name);
     insert.addBindValue(hashPassword(password));
     insert.addBindValue("user");
     insert.addBindValue(name);
 
-    if (!insert.exec()) {
+    if (!insert.exec() || !insert.next()) {
         if (error)
             *error = "could not create the account: " + insert.lastError().text();
         return false;
     }
 
+    const qint64 newId = insert.value(0).toLongLong();
+    AuditService::log(newId, "account.register", "user", newId, name);
     return true;
 }
 
@@ -349,6 +353,103 @@ bool AuthService::changePassword(qint64 userId, const QString& currentPassword,
     revoke.addBindValue(userId);
     revoke.exec();
 
+    AuditService::log(userId, "account.password_change", "user", userId);
+    return true;
+}
+
+QVector<UserRow> AuthService::listUsers()
+{
+    QVector<UserRow> users;
+
+    QSqlQuery query;
+    if (!query.exec(
+            "select id, username, role, display_name, is_active, last_login_at "
+            "from users order by username"))
+        return users;
+
+    while (query.next()) {
+        UserRow user;
+        user.id = query.value(0).toLongLong();
+        user.username = query.value(1).toString();
+        user.role = query.value(2).toString();
+        user.displayName = query.value(3).toString();
+        user.active = query.value(4).toBool();
+        user.lastLoginAt = query.value(5).toDateTime();
+        users.append(user);
+    }
+
+    return users;
+}
+
+bool AuthService::setUserActive(qint64 targetId, bool active, qint64 actorId,
+                                QString* error)
+{
+    if (targetId <= 0) {
+        if (error)
+            *error = "no user selected.";
+        return false;
+    }
+    // you can't switch yourself off - the spec's admin rule
+    if (targetId == actorId && !active) {
+        if (error)
+            *error = "you can't disable your own account.";
+        return false;
+    }
+
+    QSqlQuery query;
+    query.prepare(
+        "update users set is_active = ?, updated_at = now() where id = ?");
+    query.addBindValue(active);
+    query.addBindValue(targetId);
+
+    if (!query.exec() || query.numRowsAffected() == 0) {
+        if (error)
+            *error = "could not update the account.";
+        return false;
+    }
+
+    // disabling someone kicks their sessions, same as a password change
+    if (!active) {
+        QSqlQuery revoke;
+        revoke.prepare(
+            "update sessions set revoked_at = now() where user_id = ? "
+            "and revoked_at is null");
+        revoke.addBindValue(targetId);
+        revoke.exec();
+    }
+
+    AuditService::log(actorId, active ? "account.enable" : "account.disable",
+                      "user", targetId);
+    return true;
+}
+
+bool AuthService::setUserRole(qint64 targetId, const QString& role,
+                              qint64 actorId, QString* error)
+{
+    if (targetId <= 0) {
+        if (error)
+            *error = "no user selected.";
+        return false;
+    }
+    if (role != "admin" && role != "user") {
+        if (error)
+            *error = "role must be admin or user.";
+        return false;
+    }
+
+    QSqlQuery query;
+    query.prepare(
+        "update users set role = ?, updated_at = now() where id = ?");
+    query.addBindValue(role);
+    query.addBindValue(targetId);
+
+    if (!query.exec() || query.numRowsAffected() == 0) {
+        if (error)
+            *error = "could not update the role.";
+        return false;
+    }
+
+    AuditService::log(actorId, "account.role_change", "user", targetId, role);
     return true;
 }
 
