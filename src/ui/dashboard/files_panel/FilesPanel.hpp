@@ -2,6 +2,8 @@
 
 #include "src/ui/widgets/Widgets.hpp"
 
+class QScrollArea;
+
 class FilesPanel : public Panel
 {
     Q_OBJECT
@@ -16,6 +18,7 @@ private:
 
     qint64 m_userId = 0;
     qint64 m_projectId = 0;
+    QScrollArea* m_scroll = nullptr;
     QWidget* m_list = nullptr;
     QVBoxLayout* m_listLayout = nullptr;
 };

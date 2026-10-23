@@ -9,6 +9,7 @@
 #include <QFileInfo>
 #include <QPasswordDigestor>
 #include <QSettings>
+#include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
@@ -66,6 +67,40 @@ QString rememberFilePath()
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
         + "/remember.bin";
 }
+
+// day 11: related records change together or not at all (spec: use
+// transactions when changing related records). wraps the default
+// connection; rollBack() is safe to call when no transaction is open
+class DbTransaction
+{
+public:
+    DbTransaction()
+        : m_db(QSqlDatabase::database())
+        , m_open(m_db.transaction())
+    {
+    }
+
+    ~DbTransaction()
+    {
+        if (m_open && !m_committed)
+            m_db.rollback();
+    }
+
+    bool isOpen() const { return m_open; }
+
+    bool commit()
+    {
+        if (!m_open)
+            return true;
+        m_committed = m_db.commit();
+        return m_committed;
+    }
+
+private:
+    QSqlDatabase m_db;
+    bool m_open = false;
+    bool m_committed = false;
+};
 
 }
 
@@ -179,34 +214,48 @@ AuthUser AuthService::login(const QString& username, const QString& password,
         return user;
     }
 
-    // one random token per login, we only store its hash
+    // one random token per login, we only store its hash. the session
+    // row and last_login_at land together or not at all
     const QString token = randomBytes(32).toHex();
     const QDateTime now = QDateTime::currentDateTimeUtc();
 
-    QSqlQuery insert;
-    insert.prepare(
-        "insert into sessions (user_id, token_hash, expires_at, absolute_expires_at, user_agent) "
-        "values (?, ?, ?, ?, ?) returning id");
-    insert.addBindValue(find.value("id").toLongLong());
-    insert.addBindValue(sha256Hex(token.toUtf8()));
-    insert.addBindValue(now.addSecs(idleMinutes * 60));
-    insert.addBindValue(now.addSecs(maxLifeDays * 24 * 3600));
-    insert.addBindValue("orbit-desktop");
+    {
+        DbTransaction txn;
 
-    if (!insert.exec() || !insert.next()) {
-        if (error)
-            *error = "could not start a session: " + insert.lastError().text();
-        return user;
+        QSqlQuery insert;
+        insert.prepare(
+            "insert into sessions (user_id, token_hash, expires_at, absolute_expires_at, user_agent) "
+            "values (?, ?, ?, ?, ?) returning id");
+        insert.addBindValue(find.value("id").toLongLong());
+        insert.addBindValue(sha256Hex(token.toUtf8()));
+        insert.addBindValue(now.addSecs(idleMinutes * 60));
+        insert.addBindValue(now.addSecs(maxLifeDays * 24 * 3600));
+        insert.addBindValue("orbit-desktop");
+
+        if (!insert.exec() || !insert.next()) {
+            if (error)
+                *error = "could not start a session: " + insert.lastError().text();
+            return user;
+        }
+        const qint64 sessionId = insert.value(0).toLongLong();
+
+        // last_login_at, per the spec
+        QSqlQuery touch;
+        touch.prepare("update users set last_login_at = ?, updated_at = ? where id = ?");
+        touch.addBindValue(now);
+        touch.addBindValue(now);
+        touch.addBindValue(find.value("id").toLongLong());
+        if (!touch.exec()) {
+            if (error)
+                *error = "could not save the login time.";
+            return user;
+        }
+
+        if (!txn.commit())
+            return user;
+
+        user.sessionId = sessionId;
     }
-    const qint64 sessionId = insert.value(0).toLongLong();
-
-    // last_login_at, per the spec
-    QSqlQuery touch;
-    touch.prepare("update users set last_login_at = ?, updated_at = ? where id = ?");
-    touch.addBindValue(now);
-    touch.addBindValue(now);
-    touch.addBindValue(find.value("id").toLongLong());
-    touch.exec();
 
     // tidy up old sessions while we're here
     QSqlQuery cleanup;
@@ -214,7 +263,6 @@ AuthUser AuthService::login(const QString& username, const QString& password,
         "delete from sessions where absolute_expires_at < now() or expires_at < now()");
 
     user.id = find.value("id").toLongLong();
-    user.sessionId = sessionId;
     user.username = find.value("username").toString();
     user.displayName = find.value("display_name").toString();
     user.role = find.value("role").toString();
@@ -334,24 +382,37 @@ bool AuthService::changePassword(qint64 userId, const QString& currentPassword,
         return false;
     }
 
-    QSqlQuery update;
-    update.prepare("update users set password_hash = ?, updated_at = now() where id = ?");
-    update.addBindValue(hashPassword(newPassword));
-    update.addBindValue(userId);
-    if (!update.exec()) {
-        if (error)
-            *error = "could not save the new password.";
-        return false;
-    }
+    // new password + killing every session happen together: a crash
+    // between them would leave old sessions valid on the new password
+    {
+        DbTransaction txn;
 
-    // kill every session for this user - password change invalidates
-    // all of them per the spec
-    QSqlQuery revoke;
-    revoke.prepare(
-        "update sessions set revoked_at = now() where user_id = ? "
-        "and revoked_at is null");
-    revoke.addBindValue(userId);
-    revoke.exec();
+        QSqlQuery update;
+        update.prepare("update users set password_hash = ?, updated_at = now() where id = ?");
+        update.addBindValue(hashPassword(newPassword));
+        update.addBindValue(userId);
+        if (!update.exec()) {
+            if (error)
+                *error = "could not save the new password.";
+            return false;
+        }
+
+        // kill every session for this user - password change invalidates
+        // all of them per the spec
+        QSqlQuery revoke;
+        revoke.prepare(
+            "update sessions set revoked_at = now() where user_id = ? "
+            "and revoked_at is null");
+        revoke.addBindValue(userId);
+        if (!revoke.exec()) {
+            if (error)
+                *error = "could not sign out the old sessions.";
+            return false;
+        }
+
+        if (!txn.commit())
+            return false;
+    }
 
     AuditService::log(userId, "account.password_change", "user", userId);
     return true;
@@ -396,26 +457,39 @@ bool AuthService::setUserActive(qint64 targetId, bool active, qint64 actorId,
         return false;
     }
 
-    QSqlQuery query;
-    query.prepare(
-        "update users set is_active = ?, updated_at = now() where id = ?");
-    query.addBindValue(active);
-    query.addBindValue(targetId);
+    // flag flip and session revoke in one transaction - a half-applied
+    // disable would leave the user logged in on an inactive account
+    {
+        DbTransaction txn;
 
-    if (!query.exec() || query.numRowsAffected() == 0) {
-        if (error)
-            *error = "could not update the account.";
-        return false;
-    }
+        QSqlQuery query;
+        query.prepare(
+            "update users set is_active = ?, updated_at = now() where id = ?");
+        query.addBindValue(active);
+        query.addBindValue(targetId);
 
-    // disabling someone kicks their sessions, same as a password change
-    if (!active) {
-        QSqlQuery revoke;
-        revoke.prepare(
-            "update sessions set revoked_at = now() where user_id = ? "
-            "and revoked_at is null");
-        revoke.addBindValue(targetId);
-        revoke.exec();
+        if (!query.exec() || query.numRowsAffected() == 0) {
+            if (error)
+                *error = "could not update the account.";
+            return false;
+        }
+
+        // disabling someone kicks their sessions, same as a password change
+        if (!active) {
+            QSqlQuery revoke;
+            revoke.prepare(
+                "update sessions set revoked_at = now() where user_id = ? "
+                "and revoked_at is null");
+            revoke.addBindValue(targetId);
+            if (!revoke.exec()) {
+                if (error)
+                    *error = "could not sign out the user.";
+                return false;
+            }
+        }
+
+        if (!txn.commit())
+            return false;
     }
 
     AuditService::log(actorId, active ? "account.enable" : "account.disable",

@@ -230,6 +230,37 @@ create table audit_logs (
 )" },
 };
 
+// day 11: tables only, per the spec - teams stays inactive until
+// collaboration is actually needed, project_members comes with sharing
+const Table day11Tables[] = {
+    { "teams", R"(
+create table teams (
+    id bigserial primary key,
+    name text not null,
+    description text default '',
+    created_by bigint references users (id) on delete set null,
+    created_date timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+)
+)" },
+    { "project_members", R"(
+create table project_members (
+    id bigserial primary key,
+    project_id bigint not null references projects (id) on delete cascade,
+    user_id bigint not null references users (id) on delete cascade,
+    role text not null default 'member',
+    joined_at timestamptz not null default now(),
+    constraint project_members_project_user_unique unique (project_id, user_id)
+)
+)" },
+};
+
+const char* day11Indexes[] = {
+    "create index teams_created_by_idx on teams (created_by)",
+    "create index project_members_project_id_idx on project_members (project_id)",
+    "create index project_members_user_id_idx on project_members (user_id)",
+};
+
 const char* day9Indexes[] = {
     "create index audit_logs_user_id_idx on audit_logs (user_id)",
     "create index audit_logs_created_at_idx on audit_logs (created_at)",
@@ -334,12 +365,14 @@ bool Database::ensureTables()
         || !applyTables(day6Tables, std::size(day6Tables), created, m_status)
         || !applyTables(day7Tables, std::size(day7Tables), created, m_status)
         || !applyTables(day9Tables, std::size(day9Tables), created, m_status)
+        || !applyTables(day11Tables, std::size(day11Tables), created, m_status)
         || !applyIndexes(day1Indexes, std::size(day1Indexes), m_status)
         || !applyIndexes(day2Indexes, std::size(day2Indexes), m_status)
         || !applyIndexes(day3Indexes, std::size(day3Indexes), m_status)
         || !applyIndexes(day5Indexes, std::size(day5Indexes), m_status)
         || !applyIndexes(day6Indexes, std::size(day6Indexes), m_status)
         || !applyIndexes(day9Indexes, std::size(day9Indexes), m_status)
+        || !applyIndexes(day11Indexes, std::size(day11Indexes), m_status)
         || !ensureColumn("settings", "always_on_top",
                          "alter table settings add column always_on_top "
                          "boolean not null default false", m_status)

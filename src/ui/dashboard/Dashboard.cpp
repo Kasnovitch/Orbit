@@ -20,7 +20,9 @@ Dashboard::Dashboard(qint64 userId, const QString& displayName, QWidget* parent)
     , m_userId(userId)
 {
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(24, 24, 24, 24);
+    // padding comes from the main window's content layout so the
+    // greeting lines up with the project selector above it
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(16);
 
     // greeting + live clock, per the reference screenshot
@@ -57,12 +59,13 @@ Dashboard::Dashboard(qint64 userId, const QString& displayName, QWidget* parent)
     m_upcomingDeadlines = new StatTile("Upcoming Deadlines", this);
     m_activeCountdowns = new StatTile("Active Countdowns", this);
     m_completedCountdowns = new StatTile("Completed Countdowns", this);
-    tiles->addWidget(m_activeTasks);
-    tiles->addWidget(m_completedTasks);
-    tiles->addWidget(m_upcomingDeadlines);
-    tiles->addWidget(m_activeCountdowns);
-    tiles->addWidget(m_completedCountdowns);
-    tiles->addStretch();
+    // equal stretch on each tile so they share the row evenly instead
+    // of hugging their labels and leaving a ragged gap on the right
+    tiles->addWidget(m_activeTasks, 1);
+    tiles->addWidget(m_completedTasks, 1);
+    tiles->addWidget(m_upcomingDeadlines, 1);
+    tiles->addWidget(m_activeCountdowns, 1);
+    tiles->addWidget(m_completedCountdowns, 1);
 
     auto* splitter = new QSplitter(Qt::Horizontal, this);
 

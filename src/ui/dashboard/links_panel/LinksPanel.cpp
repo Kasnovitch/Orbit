@@ -10,6 +10,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QVBoxLayout>
 
 #include "src/services/links/LinkService.hpp"
@@ -73,12 +74,21 @@ LinksPanel::LinksPanel(qint64 userId, QWidget* parent)
     connect(addButton, &QPushButton::clicked, this, &LinksPanel::addLink);
     connect(m_urlEdit, &QLineEdit::returnPressed, this, &LinksPanel::addLink);
 
-    m_list = new QWidget(this);
+    // same scroll treatment as the tasks/countdowns panels so long
+    // lists scroll instead of pushing the add bar out of the panel
+    m_scroll = new QScrollArea(this);
+    m_scroll->setObjectName("panelScroll");
+    m_scroll->setWidgetResizable(true);
+    m_scroll->setFrameShape(QFrame::NoFrame);
+    m_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    m_list = new QWidget(m_scroll);
     m_listLayout = new QVBoxLayout(m_list);
     m_listLayout->setContentsMargins(0, 0, 0, 0);
     m_listLayout->setSpacing(8);
     m_listLayout->addStretch();
-    m_body->addWidget(m_list, 1);
+    m_scroll->setWidget(m_list);
+    m_body->addWidget(m_scroll, 1);
 }
 
 void LinksPanel::setProject(qint64 projectId)

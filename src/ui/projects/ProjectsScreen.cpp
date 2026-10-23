@@ -55,7 +55,9 @@ ProjectsScreen::ProjectsScreen(const AuthUser& user, QWidget* parent)
     , m_user(user)
 {
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(24, 24, 24, 24);
+    // padding comes from the main window's content layout - one source,
+    // so this page lines up with the dashboard and the top bar
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(12);
 
     auto* heading = new QLabel("Projects", this);
@@ -113,15 +115,18 @@ void ProjectsScreen::reload()
     PermissionService permissions;
 
     for (const ProjectRow& row : rows) {
+        // same row treatment as the dashboard lists - the old frame
+        // object name had no style behind it in either theme
         auto* frame = new QFrame(this);
-        frame->setObjectName("panelFrame");
+        frame->setObjectName("itemRow");
         auto* line = new QHBoxLayout(frame);
         line->setContentsMargins(16, 12, 16, 12);
         line->setSpacing(12);
 
         auto* textCol = new QVBoxLayout();
+        textCol->setSpacing(2);
         auto* nameLabel = new QLabel(row.name, frame);
-        nameLabel->setObjectName("panelTitle");
+        nameLabel->setObjectName("projectName");
         auto* meta = new QLabel(
             (row.description.isEmpty() ? QString() : row.description + "  \u00b7  ")
                 + (row.createdByName.isEmpty()
@@ -129,7 +134,7 @@ void ProjectsScreen::reload()
                        : "by " + row.createdByName + "  \u00b7  ")
                 + (row.status == "archived" ? "archived" : "active"),
             frame);
-        meta->setObjectName("emptyHint");
+        meta->setObjectName("rowDetail");
         textCol->addWidget(nameLabel);
         if (!meta->text().isEmpty())
             textCol->addWidget(meta);
@@ -137,7 +142,7 @@ void ProjectsScreen::reload()
 
         if (permissions.canModify(m_user, row.id)) {
             auto* editButton = new QPushButton("Edit", frame);
-            editButton->setFlat(true);
+            editButton->setObjectName("rowButton");
             const qint64 id = row.id;
             const QString name = row.name;
             const QString description = row.description;
@@ -149,14 +154,14 @@ void ProjectsScreen::reload()
 
             auto* archiveButton = new QPushButton(
                 row.status == "archived" ? "Restore" : "Archive", frame);
-            archiveButton->setFlat(true);
+            archiveButton->setObjectName("rowButton");
             const bool archived = row.status == "archived";
             connect(archiveButton, &QPushButton::clicked, this,
                     [this, id, archived]() { toggleArchive(id, archived); });
             line->addWidget(archiveButton);
 
             auto* deleteButton = new QPushButton("Delete", frame);
-            deleteButton->setFlat(true);
+            deleteButton->setObjectName("rowButton");
             connect(deleteButton, &QPushButton::clicked, this,
                     [this, id, name]() { removeProject(id, name); });
             line->addWidget(deleteButton);

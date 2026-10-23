@@ -3,6 +3,7 @@
 #include "src/ui/widgets/Widgets.hpp"
 
 class QLineEdit;
+class QScrollArea;
 
 class LinksPanel : public Panel
 {
@@ -20,6 +21,7 @@ private:
     qint64 m_projectId = 0;
     QLineEdit* m_titleEdit = nullptr;
     QLineEdit* m_urlEdit = nullptr;
+    QScrollArea* m_scroll = nullptr;
     QWidget* m_list = nullptr;
     QVBoxLayout* m_listLayout = nullptr;
 };

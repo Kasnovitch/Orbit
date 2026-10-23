@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -34,12 +35,21 @@ FilesPanel::FilesPanel(qint64 userId, QWidget* parent)
     m_body->addWidget(uploadButton, 0, Qt::AlignLeft);
     connect(uploadButton, &QPushButton::clicked, this, &FilesPanel::upload);
 
-    m_list = new QWidget(this);
+    // same scroll treatment as the tasks/countdowns panels so long
+    // lists scroll instead of overflowing the panel
+    m_scroll = new QScrollArea(this);
+    m_scroll->setObjectName("panelScroll");
+    m_scroll->setWidgetResizable(true);
+    m_scroll->setFrameShape(QFrame::NoFrame);
+    m_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    m_list = new QWidget(m_scroll);
     m_listLayout = new QVBoxLayout(m_list);
     m_listLayout->setContentsMargins(0, 0, 0, 0);
     m_listLayout->setSpacing(8);
     m_listLayout->addStretch();
-    m_body->addWidget(m_list, 1);
+    m_scroll->setWidget(m_list);
+    m_body->addWidget(m_scroll, 1);
 }
 
 void FilesPanel::setProject(qint64 projectId)

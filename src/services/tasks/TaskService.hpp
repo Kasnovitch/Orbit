@@ -12,6 +12,8 @@ struct TaskRow {
     QString status;   // todo / in_progress / completed (spec values)
     QString priority; // low / normal / high
     QDateTime dueTime; // invalid = no due date
+    qint64 assignedTo = 0;      // 0 = unassigned (assigned_to nullable)
+    QString assignedToName;     // display name of the assignee, if any
 };
 
 Q_DECLARE_METATYPE(QVector<TaskRow>)
@@ -25,10 +27,12 @@ public:
     QVector<TaskRow> listForProject(qint64 projectId);
 
     qint64 create(qint64 projectId, const QString& title, const QString& contents,
-                  const QString& priority, const QDateTime& dueTime, qint64 createdBy);
+                  const QString& priority, const QDateTime& dueTime,
+                  qint64 assignedTo, qint64 createdBy);
 
     bool update(qint64 id, const QString& title, const QString& contents,
-                const QString& priority, const QDateTime& dueTime);
+                const QString& priority, const QDateTime& dueTime,
+                qint64 assignedTo);
 
     // completed_at is set/cleared here so it always matches the status
     bool setStatus(qint64 id, const QString& status);

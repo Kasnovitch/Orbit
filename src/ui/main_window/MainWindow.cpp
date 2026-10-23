@@ -180,8 +180,11 @@ void MainWindow::applyWindowFlags()
 QWidget* MainWindow::buildPlaceholderPage(const QString& heading, const QString& hint)
 {
     auto* page = new QWidget();
+    // no margins here - the content layout already pads every page, a
+    // second set just pushed the headings out of line with the top bar
     auto* layout = new QVBoxLayout(page);
-    layout->setContentsMargins(24, 24, 24, 24);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(8);
 
     auto* headingLabel = new QLabel(heading, page);
     headingLabel->setObjectName("pageHeading");

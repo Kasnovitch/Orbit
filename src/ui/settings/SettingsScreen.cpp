@@ -48,7 +48,9 @@ SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
     , m_user(user)
 {
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(24, 24, 24, 24);
+    // padding comes from the main window's content layout - keeps this
+    // page on the same grid as the dashboard and projects
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(16);
 
     auto* heading = new QLabel("Settings", this);

@@ -14,8 +14,11 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalBlocker>
+#include <QStringList>
 #include <QVBoxLayout>
 
+#include "src/data/auth/AuthService.hpp"
+#include "src/services/settings/SettingsService.hpp"
 #include "src/services/tasks/TaskService.hpp"
 
 namespace {
@@ -30,8 +33,25 @@ QString statusLabel(const QString& status)
     return QStringLiteral("Not Started");
 }
 
-// small edit dialog for title/contents/priority/due - file local, nothing
-// else in the app needs to know about it
+// everything under the task title: priority, assignee, due time - the
+// row detail line, built from whatever is set
+QString taskDetail(const TaskRow& task)
+{
+    QStringList parts;
+
+    if (!task.priority.isEmpty() && task.priority != "normal")
+        parts << task.priority;
+    if (task.assignedTo > 0)
+        parts << QStringLiteral("for %1").arg(task.assignedToName);
+    if (task.dueTime.isValid())
+        parts << QStringLiteral("due %1").arg(SettingsService::formatInTimezone(
+            task.dueTime, QStringLiteral("d MMM, HH:mm")));
+
+    return parts.join(QStringLiteral("  \u00b7  "));
+}
+
+// small edit dialog for title/contents/priority/due/assignee - file
+// local, nothing else in the app needs to know about it
 class TaskEditDialog : public QDialog
 {
 public:
@@ -49,6 +69,23 @@ public:
         m_priority->addItems({ "low", "normal", "high" });
         m_priority->setCurrentText(task.priority.isEmpty() ? "normal" : task.priority);
 
+        m_assignee = new QComboBox(this);
+        m_assignee->addItem("Unassigned", 0);
+        AuthService auth;
+        const QVector<UserRow> users = auth.listUsers();
+        for (const UserRow& user : users) {
+            if (!user.active && user.id != task.assignedTo)
+                continue;
+            const QString label = user.displayName.isEmpty()
+                ? user.username
+                : QStringLiteral("%1 (%2)").arg(user.displayName, user.username);
+            m_assignee->addItem(
+                user.active ? label : label + QStringLiteral(" \u2014 disabled"),
+                user.id);
+        }
+        const int assigneeIndex = m_assignee->findData(task.assignedTo);
+        m_assignee->setCurrentIndex(assigneeIndex >= 0 ? assigneeIndex : 0);
+
         m_noDue = new QCheckBox("No due date", this);
         m_due = new QDateTimeEdit(task.dueTime.isValid()
                                       ? task.dueTime
@@ -62,6 +99,7 @@ public:
         form->addRow("Title", m_title);
         form->addRow("Contents", m_contents);
         form->addRow("Priority", m_priority);
+        form->addRow("Assign to", m_assignee);
         form->addRow(QString(), m_noDue);
         form->addRow("Due", m_due);
 
@@ -75,12 +113,14 @@ public:
     QString title() const { return m_title->text().trimmed(); }
     QString contents() const { return m_contents->toPlainText(); }
     QString priority() const { return m_priority->currentText(); }
+    qint64 assignedTo() const { return m_assignee->currentData().toLongLong(); }
     QDateTime dueTime() const { return m_noDue->isChecked() ? QDateTime() : m_due->dateTime(); }
 
 private:
     QLineEdit* m_title = nullptr;
     QPlainTextEdit* m_contents = nullptr;
     QComboBox* m_priority = nullptr;
+    QComboBox* m_assignee = nullptr;
     QCheckBox* m_noDue = nullptr;
     QDateTimeEdit* m_due = nullptr;
 };
@@ -158,10 +198,23 @@ void TaskPanel::reload()
         rowLayout->setContentsMargins(12, 8, 12, 8);
         rowLayout->setSpacing(8);
 
+        auto* titles = new QVBoxLayout();
+        titles->setSpacing(2);
+
         auto* titleLabel = new QLabel(task.title, row);
         titleLabel->setObjectName("rowTitle");
         titleLabel->setWordWrap(true);
-        rowLayout->addWidget(titleLabel, 1);
+        titles->addWidget(titleLabel);
+
+        const QString detail = taskDetail(task);
+        if (!detail.isEmpty()) {
+            auto* detailLabel = new QLabel(detail, row);
+            detailLabel->setObjectName("rowDetail");
+            detailLabel->setWordWrap(true);
+            titles->addWidget(detailLabel);
+        }
+
+        rowLayout->addLayout(titles, 1);
 
         auto* status = new QComboBox(row);
         status->setObjectName("rowCombo");
@@ -190,7 +243,8 @@ void TaskPanel::reload()
                 return;
             TaskService service;
             if (service.update(task.id, dialog.title(), dialog.contents(),
-                               dialog.priority(), dialog.dueTime())) {
+                               dialog.priority(), dialog.dueTime(),
+                               dialog.assignedTo())) {
                 reload();
                 emit dataChanged();
             }
@@ -219,7 +273,9 @@ void TaskPanel::addTask()
         return;
 
     TaskService service;
-    if (service.create(m_projectId, title, QString(), "normal", QDateTime(), m_userId) > 0) {
+    if (service.create(m_projectId, title, QString(), "normal", QDateTime(),
+                       0, m_userId)
+        > 0) {
         m_titleEdit->clear();
         reload();
         emit dataChanged();

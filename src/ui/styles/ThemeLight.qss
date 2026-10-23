@@ -37,6 +37,12 @@ QLabel#pageHeading {
     font-weight: 600;
 }
 
+QLabel#projectName {
+    font-size: 15px;
+    font-weight: 600;
+    color: #121722;
+}
+
 QLabel#loginTitle {
     font-size: 26px;
     font-weight: 700;

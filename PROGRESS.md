@@ -353,3 +353,50 @@ open), day 3 (projects crud + permissions), day 9 (audit + admin).
   visible; if the tray can't show, close quits as before
 - always-on-top uses the native window flag; toggling it re-shows the
   window because changing flags hides it on windows
+
+## day 11 - spec leftovers + ui alignment (23 oct 2026)
+
+### done
+
+- `teams` and `project_members` tables created (day 11 schema group +
+  indexes on created_by/project_id/user_id) - table only per the spec,
+  the feature stays off until collaboration is actually needed
+- task assignment: `TaskRow`/`TaskService` now carry `assigned_to` +
+  assignee display name (list joins users), create/update write it, the
+  task edit dialog got an "Assign to" combo (active users, disabled
+  ones marked, current assignee kept even if disabled), task rows show
+  a detail line under the title: priority, assignee, due time
+- transactions on multi-statement account changes (spec: use
+  transactions when changing related records): login (session insert +
+  last_login_at), change password (hash update + session revoke),
+  enable/disable (flag update + session revoke). small RAII
+  `DbTransaction` in AuthService.cpp - rolls back on early return
+- ui alignment pass:
+  - removed the double page padding - every page had its own 24px
+    margins on top of the main window's 24/20px content margins, so
+    headings sat 48px in and out of line with the project selector;
+    pages are now 0-margin and the content layout is the single source
+    of padding
+  - stat tiles share the row evenly (equal stretch each) instead of
+    hugging their labels with a ragged gap
+  - project rows: `panelFrame` object name had no style in either
+    theme - now `itemRow` like every other list, name on a new
+    `projectName` style, meta on `rowDetail`, action buttons use
+    `rowButton` instead of unstyled flat buttons
+  - links and files lists moved into scroll areas like tasks and
+    countdowns, so long lists scroll instead of overflowing
+- build dir was reconfigured to a Visual Studio generator by an editor
+  at some point (17:06 22 oct), clobbering the MinGW cache - restored
+  with the README configure command (cache + CMakeFiles wiped, no
+  source impact)
+
+### decisions
+
+- assignee picker only lists active users; a task assigned to a now
+  disabled user still shows it (marked disabled in the combo)
+- unassigned is stored as null (`assigned_to` nullable per spec),
+  shown as no detail line rather than "unassigned"
+- transactions cover the account flows where two statements must land
+  together; single-statement mutations (projects, tasks, links, files,
+  permissions) stay plain - postgres already makes those atomic
+- teams page keeps its placeholder text - tables exist, feature off

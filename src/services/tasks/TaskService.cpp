@@ -47,10 +47,12 @@ QVector<TaskRow> TaskService::listForProject(qint64 projectId)
 
     QSqlQuery query;
     query.prepare(
-        "select id, title, contents, status, priority, due_time "
-        "from tasks where project_id = ? "
-        "order by case status when 'completed' then 1 else 0 end, "
-        "due_time nulls last, id");
+        "select t.id, t.title, t.contents, t.status, t.priority, t.due_time, "
+        "coalesce(t.assigned_to, 0), coalesce(nullif(u.display_name, ''), u.username, '') "
+        "from tasks t left join users u on u.id = t.assigned_to "
+        "where t.project_id = ? "
+        "order by case t.status when 'completed' then 1 else 0 end, "
+        "t.due_time nulls last, t.id");
     query.addBindValue(projectId);
 
     if (!query.exec())
@@ -64,6 +66,8 @@ QVector<TaskRow> TaskService::listForProject(qint64 projectId)
         task.status = query.value(3).toString();
         task.priority = query.value(4).toString();
         task.dueTime = query.value(5).toDateTime();
+        task.assignedTo = query.value(6).toLongLong();
+        task.assignedToName = query.value(7).toString();
         tasks.append(task);
     }
 
@@ -73,20 +77,23 @@ QVector<TaskRow> TaskService::listForProject(qint64 projectId)
 
 qint64 TaskService::create(qint64 projectId, const QString& title,
                            const QString& contents, const QString& priority,
-                           const QDateTime& dueTime, qint64 createdBy)
+                           const QDateTime& dueTime, qint64 assignedTo,
+                           qint64 createdBy)
 {
     if (projectId <= 0 || title.trimmed().isEmpty())
         return 0;
 
     QSqlQuery insert;
     insert.prepare(
-        "insert into tasks (project_id, title, contents, priority, due_time, created_by) "
-        "values (?, ?, ?, ?, ?, ?) returning id");
+        "insert into tasks (project_id, title, contents, priority, due_time, "
+        "assigned_to, created_by) "
+        "values (?, ?, ?, ?, ?, ?, ?) returning id");
     insert.addBindValue(projectId);
     insert.addBindValue(title.trimmed());
     insert.addBindValue(contents);
     insert.addBindValue(priority);
     insert.addBindValue(dueTime.isValid() ? QVariant(dueTime) : QVariant());
+    insert.addBindValue(assignedTo > 0 ? QVariant(assignedTo) : QVariant());
     insert.addBindValue(createdBy > 0 ? QVariant(createdBy) : QVariant());
 
     if (!insert.exec() || !insert.next())
@@ -97,7 +104,8 @@ qint64 TaskService::create(qint64 projectId, const QString& title,
 }
 
 bool TaskService::update(qint64 id, const QString& title, const QString& contents,
-                         const QString& priority, const QDateTime& dueTime)
+                         const QString& priority, const QDateTime& dueTime,
+                         qint64 assignedTo)
 {
     if (id <= 0 || title.trimmed().isEmpty())
         return false;
@@ -105,11 +113,12 @@ bool TaskService::update(qint64 id, const QString& title, const QString& content
     QSqlQuery update;
     update.prepare(
         "update tasks set title = ?, contents = ?, priority = ?, due_time = ?, "
-        "updated_at = now() where id = ?");
+        "assigned_to = ?, updated_at = now() where id = ?");
     update.addBindValue(title.trimmed());
     update.addBindValue(contents);
     update.addBindValue(priority);
     update.addBindValue(dueTime.isValid() ? QVariant(dueTime) : QVariant());
+    update.addBindValue(assignedTo > 0 ? QVariant(assignedTo) : QVariant());
     update.addBindValue(id);
 
     if (!update.exec() || update.numRowsAffected() == 0)
