@@ -1,109 +1,114 @@
 # to do list
 
+> complete as of day 12 - every box below is done. kept as the original
+> checklist / spec reference; nothing here is still pending. the only
+> open question from the notes (half-hour timezones) is still out of
+> scope, everything else shipped.
+
 ## setup
 
-- [ ] set up the database files and get postgres connecting
-- [ ] decide what the app opens on — login/register first or straight to the dashboard
-- [ ] tables should create themselves once the database file exists (sql comes from the c++ side)
-- [ ] make sure the database doesnt remake itself constantly if it already exists
-- [ ] tasks table
-- [ ] add empty tiles for now so the dashboard isnt blank
-- [ ] hook the database up to the frontend for the tile logic/stats (placeholder for now)
-- [ ] task list should read from the database once its set up and show the list
-- [ ] utility classes
+- [x] set up the database files and get postgres connecting
+- [x] decide what the app opens on — login/register first or straight to the dashboard
+- [x] tables should create themselves once the database file exists (sql comes from the c++ side)
+- [x] make sure the database doesnt remake itself constantly if it already exists
+- [x] tasks table
+- [x] add empty tiles for now so the dashboard isnt blank
+- [x] hook the database up to the frontend for the tile logic/stats (placeholder for now)
+- [x] task list should read from the database once its set up and show the list
+- [x] utility classes
 
 ## database tables
 
-- [ ] users — username (unique), password hashed not plaintext, role user/admin, email, display name, is_active so admins can disable without deleting, last_login_at
-- [ ] countdowns — project_id (nullable for global countdowns), title, description, due_time, created_by
-- [ ] tasks — project_id always required, title, contents, status todo/in_progress/completed, priority, due_time optional, created_by, assigned_to (can be null), completed_at
-- [ ] projects — name, description, created_by (owner check), status active/archived, visibility, archived_at
-- [ ] project_links — must belong to a project, title + url, validate urls before saving
-- [ ] project_files — must belong to a project, filename, storage_key, mime type, size, uploaded_by. actual files live on disk, not in the database. validate uploads + permissions
-- [ ] sessions — server side, hashed token in an httponly cookie, inactivity expiry + absolute max, revoke on logout, cleanup old ones
-- [ ] settings — notifications on/off, theme dark/light/system, timezone
-- [ ] teams — just the table for now, feature stays off
-- [ ] project_members — table only, for later when we share projects
-- [ ] audit_logs — who did what and when. no passwords or tokens in here
-- [ ] permissions — permission records for the permission checks
-- [ ] foreign keys everywhere, bigints/uuids consistently, timestamptz, indexes on project_id, due_time, user_id
-- [ ] decide what happens to tasks/links/files when a project gets deleted
-- [ ] keep db credentials out of the code
+- [x] users — username (unique), password hashed not plaintext, role user/admin, email, display name, is_active so admins can disable without deleting, last_login_at
+- [x] countdowns — project_id (nullable for global countdowns), title, description, due_time, created_by
+- [x] tasks — project_id always required, title, contents, status todo/in_progress/completed, priority, due_time optional, created_by, assigned_to (can be null), completed_at
+- [x] projects — name, description, created_by (owner check), status active/archived, visibility, archived_at
+- [x] project_links — must belong to a project, title + url, validate urls before saving
+- [x] project_files — must belong to a project, filename, storage_key, mime type, size, uploaded_by. actual files live on disk, not in the database. validate uploads + permissions
+- [x] sessions — server side, hashed token in an httponly cookie, inactivity expiry + absolute max, revoke on logout, cleanup old ones
+- [x] settings — notifications on/off, theme dark/light/system, timezone
+- [x] teams — just the table for now, feature stays off
+- [x] project_members — table only, for later when we share projects
+- [x] audit_logs — who did what and when. no passwords or tokens in here
+- [x] permissions — permission records for the permission checks
+- [x] foreign keys everywhere, bigints/uuids consistently, timestamptz, indexes on project_id, due_time, user_id
+- [x] decide what happens to tasks/links/files when a project gets deleted
+- [x] keep db credentials out of the code
 
 ## login + sessions
 
-- [ ] login page (and register if we go that route)
-- [ ] hash passwords properly
-- [ ] 30 min inactivity timeout, 7 day max session life
-- [ ] remember me option if we need it
-- [ ] logout kills the session straight away
-- [ ] changing password or disabling an account invalidates sessions
-- [ ] clean up expired sessions automatically
-- [ ] save last_login_at on successful login
+- [x] login page (and register if we go that route)
+- [x] hash passwords properly
+- [x] 30 min inactivity timeout, 7 day max session life
+- [x] remember me option if we need it
+- [x] logout kills the session straight away
+- [x] changing password or disabling an account invalidates sessions
+- [x] clean up expired sessions automatically
+- [x] save last_login_at on successful login
 
 ## projects
 
-- [ ] projects crud with owner check (created_by)
-- [ ] current project selector — picks which tasks, countdowns, links and files show up
-- [ ] projects show their links
-- [ ] check who created the project
+- [x] projects crud with owner check (created_by)
+- [x] current project selector — picks which tasks, countdowns, links and files show up
+- [x] projects show their links
+- [x] check who created the project
 
 ## tasks + countdowns
 
-- [ ] tasks crud tied to the selected project
-- [ ] statuses: todo, in_progress, completed (+ completed_at)
-- [ ] countdowns crud, project optional (global ones allowed)
-- [ ] countdown list sorted by due_time ascending, shortest one first with its title showing
+- [x] tasks crud tied to the selected project
+- [x] statuses: todo, in_progress, completed (+ completed_at)
+- [x] countdowns crud, project optional (global ones allowed)
+- [x] countdown list sorted by due_time ascending, shortest one first with its title showing
 
 ## links + files
 
-- [ ] add/edit/remove project links, check the url is valid first
-- [ ] file upload with validation (type, size) and permission checks
-- [ ] separate panel/window on the main dashboard listing all files for the selected project
+- [x] add/edit/remove project links, check the url is valid first
+- [x] file upload with validation (type, size) and permission checks
+- [x] separate panel/window on the main dashboard listing all files for the selected project
 
 ## settings page
 
-- [ ] settings page for user preferences + account stuff
-- [ ] change password from here (still hashed properly)
-- [ ] theme: dark / light / system
-- [ ] timezone affects how dates and times show
-- [ ] notifications toggle, uses the browser/system defaults. browser permission handled separately from the in-app setting
+- [x] settings page for user preferences + account stuff
+- [x] change password from here (still hashed properly)
+- [x] theme: dark / light / system
+- [x] timezone affects how dates and times show
+- [x] notifications toggle, uses the browser/system defaults. browser permission handled separately from the in-app setting
 
 ## caching
 
-- [ ] check cache first, if miss go to postgres, store result with a ttl
-- [ ] cache project lists/details, project links, task summaries, countdowns
-- [ ] invalidate when a project/task/countdown/link changes
-- [ ] never cache passwords or auth stuff, keep cached data scoped per user
-- [ ] countdown seconds always calculated from the real due_time, not cached
-- [ ] maybe redis later if we need shared caching
+- [x] check cache first, if miss go to postgres, store result with a ttl
+- [x] cache project lists/details, project links, task summaries, countdowns
+- [x] invalidate when a project/task/countdown/link changes
+- [x] never cache passwords or auth stuff, keep cached data scoped per user
+- [x] countdown seconds always calculated from the real due_time, not cached
+- [x] maybe redis later if we need shared caching
 
 ## permissions + security + audit
 
-- [ ] permission record for the role/operation. every operation goes through a permission check — owner gets all permissions, otherwise check the permission records for everyone else
-- [ ] permission checks happen server side, dont trust the frontend
-- [ ] validate all input on the server
-- [ ] use transactions when changing related records
-- [ ] audit log for project create/delete, permission changes, account changes
-- [ ] admins can manage users and system settings
+- [x] permission record for the role/operation. every operation goes through a permission check — owner gets all permissions, otherwise check the permission records for everyone else
+- [x] permission checks happen server side, dont trust the frontend
+- [x] validate all input on the server
+- [x] use transactions when changing related records
+- [x] audit log for project create/delete, permission changes, account changes
+- [x] admins can manage users and system settings
 
 ## teams
 
-- [ ] placeholder only, leave it off until we actually need it
+- [x] placeholder only, leave it off until we actually need it
 
 ---
 
 ## dashboard checklist (what the main screen needs to do)
 
-- [ ] shortest countdown first, title visible
-- [ ] countdowns sorted by due_time ascending
-- [ ] projects show their links
-- [ ] separate panel for the selected project's files
-- [ ] current project selector
-- [ ] every task has a project_id
-- [ ] caching in place so we're not hammering the database
-- [ ] settings page
-- [ ] teams is just a placeholder
+- [x] shortest countdown first, title visible
+- [x] countdowns sorted by due_time ascending
+- [x] projects show their links
+- [x] separate panel for the selected project's files
+- [x] current project selector
+- [x] every task has a project_id
+- [x] caching in place so we're not hammering the database
+- [x] settings page
+- [x] teams is just a placeholder
 
 ---
 

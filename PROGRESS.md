@@ -400,3 +400,71 @@ open), day 3 (projects crud + permissions), day 9 (audit + admin).
   together; single-statement mutations (projects, tasks, links, files,
   permissions) stay plain - postgres already makes those atomic
 - teams page keeps its placeholder text - tables exist, feature off
+
+## day 12 - countdown pause, local share, to-dolist closed out
+
+### what we did
+
+- countdowns can be paused now (the last spec leftover):
+  - `status` column on countdowns (`active`/`paused`, default active) -
+    fresh installs get it in the day 5 DDL, existing databases through
+    the usual `ensureColumn` migration
+  - `CountdownService::setPaused(id, paused)` flips it and invalidates
+    the countdowns cache; the list query now selects status
+  - the "Active Countdowns" dashboard tile only counts live ones -
+    paused countdowns drop out of `countUpcoming`
+  - paused countdowns don't nag: the notification query skips them too
+    (`and status <> 'paused'`) - they stay on the list but stay quiet
+  - each row gets a Pause/Resume button (same `rowButton` style as
+    Edit); paused rows show "paused" in the detail style instead of a
+    ticking remaining time, and the 1s tick skips them
+- local share (phone -> pc), the last to-dolist item:
+  - `ShareService` - a tiny http server on `QTcpServer` (already
+    linked, no new Qt module). binds 8787-8789, mints a fresh random
+    token per start, and only serves `/t/<token>/...` - anything else
+    is a 404 so the server doesn't advertise itself on the network
+  - the page is one form (project dropdown + file input), no
+    javascript - works from any phone browser on the same wi-fi.
+    upload is a plain multipart POST; the body is staged under a temp
+    dir with the original filename and pushed through the same
+    `FileService::upload` as a desktop upload (same 100 MB cap, same
+    mime/size validation, same cache invalidation), attributed to the
+    signed-in user
+  - after an upload it 303-redirects back with a banner (uploaded
+    file name, or the error) and the project dropdown stays where the
+    phone left it
+  - a successful upload emits `fileReceived(projectId)` - the
+    dashboard's files panel reloads if that project is on screen,
+    no polling
+  - settings got a "Sharing" panel: one checkbox + the link (selectable
+    text). turn it on, the server starts immediately and the link
+    appears; turn it off, it stops. the setting persists
+    (`settings.share_enabled`, fresh DDL + ensureColumn) and the
+    server starts at login if it was left on, stops at logout
+- `to-dolist.md` is closed out - every box ticked, header note added.
+  kept as the original spec/checklist reference. the one open question
+  (half-hour timezones) is called out as out of scope; everything else
+  from the list shipped
+- notification service: countdown reminder query now skips paused
+  countdowns so a paused deadline doesn't keep firing
+
+### decisions
+
+- share server is upload-only - phone pushes a file, nothing to
+  download back. simplest thing that closes the "phone to pc" item
+- token in the url, not a login page - anyone with the link can upload
+  while the server runs (which is only while the pc user is logged in
+  and the setting is on). noted in the settings hint text. a full
+  phone-side login was overkill for a local convenience feature
+- no Qt HttpServer module (not installed with our Qt build) - plain
+  QTcpServer + a minimal hand-rolled parser for exactly the two
+  requests we need (GET page, POST multipart). one file, no new
+  dependencies
+- the 100 MB upload cap is FileService's existing one - the share
+  path reuses FileService::upload wholesale so there's one cap, one
+  validator, one storage layout
+- paused countdowns are excluded from the active tile and from
+  notifications, but stay visible in the list with a "paused" label -
+  they're not deleted or hidden, just quiet
+- to-dolist.md is kept (ticked, with a done-as-of-day-12 note) rather
+  than deleted - it doubles as the spec reference
