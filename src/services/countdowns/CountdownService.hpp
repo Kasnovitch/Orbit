@@ -11,6 +11,7 @@ struct CountdownRow {
     QString title;
     QString description;
     QDateTime dueTime;
+    QString status = "active"; // active / paused (day 12)
 };
 
 Q_DECLARE_METATYPE(QVector<CountdownRow>)
@@ -31,6 +32,9 @@ public:
 
     bool update(qint64 id, const QString& title, const QString& description,
                 const QDateTime& dueTime);
+
+    // day 12: pause freezes the countdown without losing the due time
+    bool setPaused(qint64 id, bool paused);
 
     bool remove(qint64 id);
 

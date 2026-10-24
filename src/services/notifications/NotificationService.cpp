@@ -157,12 +157,14 @@ void NotificationService::tick()
 
     const int lead = qMax(1, settings.notifyMinutesBefore);
 
-    // countdowns coming up inside the lead window
+    // countdowns coming up inside the lead window; paused ones stay on
+    // the list but don't nag until they're resumed
     {
         QSqlQuery query;
         query.prepare(
             "select id, title, due_time from countdowns "
-            "where due_time > now() and due_time <= now() + (? * interval '1 minute')");
+            "where due_time > now() and due_time <= now() + (? * interval '1 minute') "
+            "and status <> 'paused'");
         query.addBindValue(lead);
 
         if (query.exec()) {

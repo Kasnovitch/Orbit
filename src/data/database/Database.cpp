@@ -152,7 +152,9 @@ create table permissions (
 )" },
 };
 
-// day 5: countdowns. project_id stays nullable for global countdowns
+// day 5: countdowns. project_id stays nullable for global countdowns.
+// status (active/paused) arrives day 12 - fresh installs get it here,
+// existing databases pick it up through ensureColumn below
 const Table day5Tables[] = {
     { "countdowns", R"(
 create table countdowns (
@@ -161,6 +163,7 @@ create table countdowns (
     title text not null,
     description text default '',
     due_time timestamptz not null,
+    status text not null default 'active',
     created_by bigint references users (id) on delete set null,
     created_date timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -197,8 +200,9 @@ create table project_files (
 };
 
 // day 7: per-user preferences, one row per user. day 10 adds the
-// window/notifications columns for fresh installs; ensureColumns below
-// upgrades databases that already have the table
+// window/notifications columns for fresh installs; day 12 adds
+// share_enabled. ensureColumns below upgrades databases that already
+// have the table
 const Table day7Tables[] = {
     { "settings", R"(
 create table settings (
@@ -208,6 +212,7 @@ create table settings (
     timezone text not null default 'UTC',
     always_on_top boolean not null default false,
     minimize_to_tray boolean not null default false,
+    share_enabled boolean not null default false,
     notify_minutes_before integer not null default 15,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -381,7 +386,13 @@ bool Database::ensureTables()
                          "boolean not null default false", m_status)
         || !ensureColumn("settings", "notify_minutes_before",
                          "alter table settings add column notify_minutes_before "
-                         "integer not null default 15", m_status))
+                         "integer not null default 15", m_status)
+        || !ensureColumn("settings", "share_enabled",
+                         "alter table settings add column share_enabled "
+                         "boolean not null default false", m_status)
+        || !ensureColumn("countdowns", "status",
+                         "alter table countdowns add column status "
+                         "text not null default 'active'", m_status))
         return false;
 
     if (created > 0)

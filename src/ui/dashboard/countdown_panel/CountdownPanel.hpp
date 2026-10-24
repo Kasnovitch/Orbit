@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QHash>
+#include <QSet>
 
 #include "src/ui/widgets/Widgets.hpp"
 
@@ -42,4 +43,5 @@ private:
     // row widgets keyed by countdown id so the 1s tick can update them
     QHash<qint64, QDateTime> m_dueTimes;
     QHash<qint64, QLabel*> m_remainingLabels;
+    QSet<qint64> m_paused; // paused rows keep their due time but don't tick
 };

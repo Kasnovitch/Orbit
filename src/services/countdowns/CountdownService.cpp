@@ -22,11 +22,14 @@ int countDue(qint64 projectId, bool upcoming)
     if (const QVariant cached = Cache::instance().get(cacheKey); cached.isValid())
         return cached.toInt();
 
+    // the "active countdowns" tile only counts live ones - paused
+    // countdowns still exist but aren't running towards anything
     QSqlQuery query;
     query.prepare(QString(
         "select count(*) from countdowns "
-        "where (project_id is null or project_id = ?) and due_time %1 now()")
-                      .arg(upcoming ? ">" : "<="));
+        "where (project_id is null or project_id = ?) and due_time %1 now() %2")
+                      .arg(upcoming ? ">" : "<=")
+                      .arg(upcoming ? "and status <> 'paused'" : ""));
     query.addBindValue(projectId);
 
     if (!query.exec() || !query.next())
@@ -51,7 +54,7 @@ QVector<CountdownRow> CountdownService::listForProject(qint64 projectId)
 
     QSqlQuery query;
     query.prepare(
-        "select id, project_id, title, description, due_time "
+        "select id, project_id, title, description, due_time, status "
         "from countdowns where project_id is null or project_id = ? "
         "order by due_time asc");
     query.addBindValue(projectId);
@@ -66,6 +69,7 @@ QVector<CountdownRow> CountdownService::listForProject(qint64 projectId)
         row.title = query.value(2).toString();
         row.description = query.value(3).toString();
         row.dueTime = query.value(4).toDateTime();
+        row.status = query.value(5).toString();
         countdowns.append(row);
     }
 
@@ -110,6 +114,24 @@ bool CountdownService::update(qint64 id, const QString& title,
     update.addBindValue(title.trimmed());
     update.addBindValue(description);
     update.addBindValue(dueTime);
+    update.addBindValue(id);
+
+    if (!update.exec() || update.numRowsAffected() == 0)
+        return false;
+
+    Cache::instance().invalidatePrefix("countdowns.");
+    return true;
+}
+
+bool CountdownService::setPaused(qint64 id, bool paused)
+{
+    if (id <= 0)
+        return false;
+
+    QSqlQuery update;
+    update.prepare(
+        "update countdowns set status = ?, updated_at = now() where id = ?");
+    update.addBindValue(paused ? "paused" : "active");
     update.addBindValue(id);
 
     if (!update.exec() || update.numRowsAffected() == 0)

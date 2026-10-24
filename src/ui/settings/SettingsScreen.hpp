@@ -26,6 +26,7 @@ private:
     void load();
     void save();
     void changePassword();
+    void refreshShareUrl();
 
     // day 9: admin-only users list + recent audit entries
     void buildAdminSection(QWidget* parent, QVBoxLayout* layout);
@@ -39,6 +40,8 @@ private:
     QSpinBox* m_notifyLead = nullptr;
     QCheckBox* m_alwaysOnTop = nullptr;
     QCheckBox* m_minimizeToTray = nullptr;
+    QCheckBox* m_shareEnabled = nullptr;
+    QLabel* m_shareUrl = nullptr;
     QLineEdit* m_currentPassword = nullptr;
     QLineEdit* m_newPassword = nullptr;
     QLineEdit* m_confirmPassword = nullptr;

@@ -154,6 +154,7 @@ void CountdownPanel::reload()
 
     m_dueTimes.clear();
     m_remainingLabels.clear();
+    m_paused.clear();
 
     // drop the old rows, keep the trailing stretch
     while (m_listLayout->count() > 1) {
@@ -187,8 +188,12 @@ void CountdownPanel::reload()
         titleLabel->setWordWrap(true);
         titles->addWidget(titleLabel);
 
-        auto* remainingLabel = new QLabel(formatRemaining(row.dueTime), item);
-        remainingLabel->setObjectName("rowRemaining");
+        auto* remainingLabel = new QLabel(
+            row.status == "paused" ? QStringLiteral("paused")
+                                   : formatRemaining(row.dueTime),
+            item);
+        remainingLabel->setObjectName(
+            row.status == "paused" ? "rowDetail" : "rowRemaining");
         titles->addWidget(remainingLabel);
 
         // absolute due time in the user's preferred timezone
@@ -200,6 +205,18 @@ void CountdownPanel::reload()
         titles->addWidget(dueLabel);
 
         rowLayout->addLayout(titles, 1);
+
+        const bool paused = row.status == "paused";
+        auto* pauseButton = new QPushButton(paused ? "Resume" : "Pause", item);
+        pauseButton->setObjectName("rowButton");
+        connect(pauseButton, &QPushButton::clicked, this, [this, row, paused]() {
+            CountdownService service;
+            if (service.setPaused(row.id, !paused)) {
+                reload();
+                emit dataChanged();
+            }
+        });
+        rowLayout->addWidget(pauseButton);
 
         auto* editButton = new QPushButton("Edit", item);
         editButton->setObjectName("rowButton");
@@ -230,6 +247,8 @@ void CountdownPanel::reload()
         m_listLayout->insertWidget(m_listLayout->count() - 1, item);
         m_dueTimes.insert(row.id, row.dueTime);
         m_remainingLabels.insert(row.id, remainingLabel);
+        if (paused)
+            m_paused.insert(row.id);
     }
 }
 
@@ -253,6 +272,9 @@ void CountdownPanel::addCountdown()
 void CountdownPanel::tick()
 {
     for (auto it = m_dueTimes.constBegin(); it != m_dueTimes.constEnd(); ++it) {
+        // paused rows keep their label as-is until they're resumed
+        if (m_paused.contains(it.key()))
+            continue;
         if (QLabel* label = m_remainingLabels.value(it.key(), nullptr))
             label->setText(formatRemaining(it.value()));
     }

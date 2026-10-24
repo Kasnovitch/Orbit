@@ -8,6 +8,7 @@
 #include <QVBoxLayout>
 
 #include "src/services/countdowns/CountdownService.hpp"
+#include "src/services/share/ShareService.hpp"
 #include "src/services/tasks/TaskService.hpp"
 #include "src/ui/dashboard/countdown_panel/CountdownPanel.hpp"
 #include "src/ui/dashboard/files_panel/FilesPanel.hpp"
@@ -97,6 +98,14 @@ Dashboard::Dashboard(qint64 userId, const QString& displayName, QWidget* parent)
 
     connect(m_taskPanel, &TaskPanel::dataChanged, this, &Dashboard::refreshStats);
     connect(m_countdownPanel, &CountdownPanel::dataChanged, this, &Dashboard::refreshStats);
+
+    // a phone upload landing through the share server (day 12) - reload
+    // the files panel if it's for the project on screen
+    connect(&ShareService::instance(), &ShareService::fileReceived, this,
+            [this](qint64 projectId) {
+                if (projectId == m_projectId)
+                    m_filesPanel->refresh();
+            });
 }
 
 void Dashboard::setProject(qint64 projectId)

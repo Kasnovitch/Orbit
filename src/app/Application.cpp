@@ -9,6 +9,7 @@
 #include "src/services/notifications/NotificationService.hpp"
 #include "src/services/projects/ProjectService.hpp"
 #include "src/services/settings/SettingsService.hpp"
+#include "src/services/share/ShareService.hpp"
 #include "src/ui/auth/LoginScreen.hpp"
 #include "src/ui/main_window/MainWindow.hpp"
 #include "src/ui/styles/Theme.hpp"
@@ -52,6 +53,7 @@ int Application::run(int argc, char** argv)
     auto leaveApp = [&](const QString& note) {
         watch.stop();
         notifications.stop();
+        ShareService::instance().stop();
         if (currentUser.sessionId > 0)
             auth.logout(currentUser);
         currentUser = AuthUser();
@@ -92,6 +94,11 @@ int Application::run(int argc, char** argv)
         // action brings the window back from minimize-to-tray
         notifications.attachWindow(mainWindow);
         notifications.start(user.id);
+
+        // day 12: local share - start the phone-upload server if the
+        // user turned it on in settings
+        if (SettingsService::currentSettings().shareEnabled)
+            ShareService::instance().start(user.id);
 
         // logged out from the sidebar button
         QObject::connect(mainWindow, &MainWindow::logoutRequested, &watch, [&]() {

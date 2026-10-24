@@ -10,6 +10,7 @@ struct SettingsRow {
     QString timezone = "UTC";   // UTC, UTC+2, UTC-5 ...
     bool alwaysOnTop = false;   // pin the window above others
     bool minimizeToTray = false; // closing hides to the tray instead
+    bool shareEnabled = false;  // day 12: receive phone uploads on the lan
     int notifyMinutesBefore = 15; // countdown reminder lead time
 };
 

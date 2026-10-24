@@ -19,7 +19,7 @@ SettingsRow SettingsService::get(qint64 userId)
     QSqlQuery query;
     query.prepare(
         "select notifications_enabled, theme, timezone, "
-        "always_on_top, minimize_to_tray, notify_minutes_before "
+        "always_on_top, minimize_to_tray, share_enabled, notify_minutes_before "
         "from settings where user_id = ?");
     query.addBindValue(userId);
 
@@ -31,7 +31,8 @@ SettingsRow SettingsService::get(qint64 userId)
     settings.timezone = query.value(2).toString();
     settings.alwaysOnTop = query.value(3).toBool();
     settings.minimizeToTray = query.value(4).toBool();
-    settings.notifyMinutesBefore = query.value(5).toInt();
+    settings.shareEnabled = query.value(5).toBool();
+    settings.notifyMinutesBefore = query.value(6).toInt();
     return settings;
 }
 
@@ -43,14 +44,15 @@ bool SettingsService::save(qint64 userId, const SettingsRow& settings)
     QSqlQuery upsert;
     upsert.prepare(
         "insert into settings (user_id, notifications_enabled, theme, timezone, "
-        "always_on_top, minimize_to_tray, notify_minutes_before) "
-        "values (?, ?, ?, ?, ?, ?, ?) "
+        "always_on_top, minimize_to_tray, share_enabled, notify_minutes_before) "
+        "values (?, ?, ?, ?, ?, ?, ?, ?) "
         "on conflict (user_id) do update set "
         "notifications_enabled = excluded.notifications_enabled, "
         "theme = excluded.theme, "
         "timezone = excluded.timezone, "
         "always_on_top = excluded.always_on_top, "
         "minimize_to_tray = excluded.minimize_to_tray, "
+        "share_enabled = excluded.share_enabled, "
         "notify_minutes_before = excluded.notify_minutes_before, "
         "updated_at = now()");
     upsert.addBindValue(userId);
@@ -59,6 +61,7 @@ bool SettingsService::save(qint64 userId, const SettingsRow& settings)
     upsert.addBindValue(settings.timezone);
     upsert.addBindValue(settings.alwaysOnTop);
     upsert.addBindValue(settings.minimizeToTray);
+    upsert.addBindValue(settings.shareEnabled);
     upsert.addBindValue(settings.notifyMinutesBefore);
 
     if (!upsert.exec())
@@ -67,7 +70,8 @@ bool SettingsService::save(qint64 userId, const SettingsRow& settings)
     AuditService::log(userId, "account.settings_change", "user", userId,
                       settings.theme + "/" + settings.timezone
                           + (settings.alwaysOnTop ? " ontop" : "")
-                          + (settings.minimizeToTray ? " tray" : ""));
+                          + (settings.minimizeToTray ? " tray" : "")
+                          + (settings.shareEnabled ? " share" : ""));
     return true;
 }
 

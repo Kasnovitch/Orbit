@@ -12,6 +12,10 @@ public:
 
     void setProject(qint64 projectId);
 
+    // public so the dashboard can reload us when a phone upload lands
+    // through the share server
+    void refresh() { reload(); }
+
 private:
     void reload();
     void upload();

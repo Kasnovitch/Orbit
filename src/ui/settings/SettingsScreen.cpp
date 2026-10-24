@@ -15,6 +15,7 @@
 #include "src/data/auth/AuthService.hpp"
 #include "src/services/audit/AuditService.hpp"
 #include "src/services/settings/SettingsService.hpp"
+#include "src/services/share/ShareService.hpp"
 #include "src/ui/styles/Theme.hpp"
 #include "src/ui/widgets/Widgets.hpp"
 
@@ -135,6 +136,32 @@ SettingsScreen::SettingsScreen(const AuthUser& user, QWidget* parent)
     windowHint->setWordWrap(true);
     windowPanel->bodyLayout()->addWidget(windowHint);
     layout->addWidget(windowPanel);
+
+    // ---- sharing (day 12) -------------------------------------------
+    auto* sharing = new Panel("Sharing", this);
+    auto* sharingForm = makeForm();
+
+    m_shareEnabled = new QCheckBox("Receive files from your phone", sharing);
+    addCheckRow(sharingForm, "Local share", m_shareEnabled);
+
+    m_shareUrl = new QLabel(sharing);
+    m_shareUrl->setObjectName("settingsHint");
+    m_shareUrl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_shareUrl->setWordWrap(true);
+    sharingForm->addRow("Link", m_shareUrl);
+
+    sharing->bodyLayout()->addLayout(sharingForm);
+
+    auto* sharingHint = new QLabel(
+        "Starts a tiny server on this computer. Open the link on your phone "
+        "(same wi-fi) to push a file straight into a project. The link "
+        "includes a random token and only works while this computer is "
+        "logged in - share it with care, anyone with the link can upload.",
+        sharing);
+    sharingHint->setObjectName("settingsHint");
+    sharingHint->setWordWrap(true);
+    sharing->bodyLayout()->addWidget(sharingHint);
+    layout->addWidget(sharing);
 
     // ---- account ----------------------------------------------------
     auto* account = new Panel("Account", this);
@@ -341,6 +368,9 @@ void SettingsScreen::load()
         settings.notifyMinutesBefore > 0 ? settings.notifyMinutesBefore : 15);
     m_alwaysOnTop->setChecked(settings.alwaysOnTop);
     m_minimizeToTray->setChecked(settings.minimizeToTray);
+    m_shareEnabled->setChecked(settings.shareEnabled);
+
+    refreshShareUrl();
 }
 
 void SettingsScreen::save()
@@ -353,18 +383,32 @@ void SettingsScreen::save()
     settings.notifyMinutesBefore = m_notifyLead->value();
     settings.alwaysOnTop = m_alwaysOnTop->isChecked();
     settings.minimizeToTray = m_minimizeToTray->isChecked();
+    settings.shareEnabled = m_shareEnabled->isChecked();
 
     if (!SettingsService::save(m_user.id, settings)) {
         m_savedHint->setText("Could not save - is the database reachable?");
         return;
     }
 
+    // bring the share server in line with the new setting right away
+    // instead of waiting for the next login
+    bool shareFailed = false;
+    auto& share = ShareService::instance();
+    if (settings.shareEnabled && !share.isRunning())
+        shareFailed = !share.start(m_user.id);
+    else if (!settings.shareEnabled && share.isRunning())
+        share.stop();
+    refreshShareUrl();
+
     // refresh the in-memory copy (timezone formatting, tray decisions)
     // and restyle live
     SettingsService::loadCurrent(m_user.id);
     OrbitTheme::apply(settings.theme);
 
-    m_savedHint->setText("Saved.");
+    m_savedHint->setText(shareFailed
+                             ? QStringLiteral(
+                                   "Saved, but the share server could not bind a port.")
+                             : QStringLiteral("Saved."));
     emit settingsChanged();
 }
 
@@ -383,4 +427,19 @@ void SettingsScreen::changePassword()
     m_newPassword->clear();
     m_confirmPassword->clear();
     m_passwordHint->setText("Password changed. Other sessions were signed out.");
+}
+
+void SettingsScreen::refreshShareUrl()
+{
+    auto& share = ShareService::instance();
+    if (!share.isRunning()) {
+        m_shareUrl->setText(QStringLiteral("off - turn on local share to get a link"));
+        return;
+    }
+
+    const QString url = share.url();
+    m_shareUrl->setText(url.isEmpty()
+                            ? QStringLiteral(
+                                  "running, but no usable network address was found")
+                            : url);
 }
